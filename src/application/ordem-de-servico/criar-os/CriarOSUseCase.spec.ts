@@ -62,6 +62,9 @@ class InMemoryOSRepository implements IOrdemDeServicoRepository {
   async tempoMedioExecucaoMinutos(): Promise<number> {
     return 0;
   }
+  async tempoMedioExecucaoPorServico(): Promise<[]> {
+    return [];
+  }
 }
 
 describe('CriarOSUseCase', () => {

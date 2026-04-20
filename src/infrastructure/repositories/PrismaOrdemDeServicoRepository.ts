@@ -17,7 +17,10 @@ import {
   TipoItemOrcamento,
 } from '../../domain/ordem-de-servico/entities/ItemOrcamento';
 import { OrdemDeServico } from '../../domain/ordem-de-servico/entities/OrdemDeServico';
-import { IOrdemDeServicoRepository } from '../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
+import {
+  IOrdemDeServicoRepository,
+  TempoMedioPorServicoRow,
+} from '../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
 import { NumeroOS } from '../../domain/ordem-de-servico/value-objects/NumeroOS';
 import { StatusOS, StatusOSEnum } from '../../domain/ordem-de-servico/value-objects/StatusOS';
 import { UniqueID } from '../../domain/shared/UniqueID';
@@ -205,5 +208,19 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
       where: { tempoExecucaoMinutos: { not: null } },
     });
     return Math.round(result._avg.tempoExecucaoMinutos ?? 0);
+  }
+
+  async tempoMedioExecucaoPorServico(): Promise<TempoMedioPorServicoRow[]> {
+    const rows = await this.prisma.execucaoDeServico.groupBy({
+      by: ['servicoId'],
+      where: { tempoExecucaoMinutos: { not: null } },
+      _avg: { tempoExecucaoMinutos: true },
+      _count: { _all: true },
+    });
+    return rows.map((r) => ({
+      servicoId: r.servicoId,
+      tempoMedioMinutos: Math.round(r._avg.tempoExecucaoMinutos ?? 0),
+      totalExecucoes: r._count._all,
+    }));
   }
 }

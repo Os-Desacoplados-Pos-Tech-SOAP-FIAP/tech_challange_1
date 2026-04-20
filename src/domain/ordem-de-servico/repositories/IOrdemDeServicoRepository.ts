@@ -1,6 +1,12 @@
 import { UniqueID } from '../../shared/UniqueID';
 import { OrdemDeServico } from '../entities/OrdemDeServico';
 
+export interface TempoMedioPorServicoRow {
+  servicoId: string;
+  tempoMedioMinutos: number;
+  totalExecucoes: number;
+}
+
 export interface IOrdemDeServicoRepository {
   salvar(os: OrdemDeServico): Promise<void>;
   buscarPorId(id: UniqueID): Promise<OrdemDeServico | null>;
@@ -8,4 +14,5 @@ export interface IOrdemDeServicoRepository {
   listar(): Promise<OrdemDeServico[]>;
   proximoNumero(): Promise<number>;
   tempoMedioExecucaoMinutos(): Promise<number>;
+  tempoMedioExecucaoPorServico(): Promise<TempoMedioPorServicoRow[]>;
 }
