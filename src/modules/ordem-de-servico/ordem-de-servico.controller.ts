@@ -9,12 +9,14 @@ import { CriarOSUseCase } from '../../application/ordem-de-servico/criar-os/Cria
 import { ListarOSUseCase } from '../../application/ordem-de-servico/listar-os/ListarOSUseCase';
 import { RecusarOrcamentoUseCase } from '../../application/ordem-de-servico/recusar-orcamento/RecusarOrcamentoUseCase';
 import { RegistrarExecucaoUseCase } from '../../application/ordem-de-servico/registrar-execucao/RegistrarExecucaoUseCase';
+import { TempoMedioPorServicoUseCase } from '../../application/ordem-de-servico/tempo-medio-por-servico/TempoMedioPorServicoUseCase';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AvancarStatusDto } from './dto/avancar-status.dto';
 import { CriarOSDto } from './dto/criar-os.dto';
 import { OSResponseDto } from './dto/os-response.dto';
 import { RecusarOrcamentoDto } from './dto/recusar-orcamento.dto';
 import { RegistrarExecucaoDto } from './dto/registrar-execucao.dto';
+import { TempoMedioPorServicoResponseDto } from './dto/tempo-medio-por-servico-response.dto';
 
 @ApiTags('Ordens de Serviço')
 @ApiBearerAuth()
@@ -28,6 +30,7 @@ export class OrdemDeServicoController {
     private readonly aprovarOrcamento: AprovarOrcamentoUseCase,
     private readonly recusarOrcamento: RecusarOrcamentoUseCase,
     private readonly registrarExecucao: RegistrarExecucaoUseCase,
+    private readonly tempoMedioPorServicoUseCase: TempoMedioPorServicoUseCase,
   ) {}
 
   @Post()
@@ -50,6 +53,16 @@ export class OrdemDeServicoController {
   @ApiOperation({ summary: 'Tempo médio de execução em minutos' })
   async tempoMedio(): Promise<{ tempoMedioMinutos: number }> {
     return { tempoMedioMinutos: await this.listarOS.tempoMedioExecucao() };
+  }
+
+  @Get('metricas/tempo-medio-por-servico')
+  @Roles(PerfilAcesso.ADMINISTRADOR)
+  @ApiOperation({
+    summary: 'Tempo médio de execução por tipo de serviço (minutos)',
+  })
+  async tempoMedioPorServico(): Promise<TempoMedioPorServicoResponseDto[]> {
+    const items = await this.tempoMedioPorServicoUseCase.execute();
+    return items.map(TempoMedioPorServicoResponseDto.fromOutput);
   }
 
   @Get(':id')

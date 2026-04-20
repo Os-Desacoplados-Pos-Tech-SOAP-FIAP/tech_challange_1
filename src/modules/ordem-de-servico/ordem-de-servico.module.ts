@@ -7,6 +7,7 @@ import { CriarOSUseCase } from '../../application/ordem-de-servico/criar-os/Cria
 import { ListarOSUseCase } from '../../application/ordem-de-servico/listar-os/ListarOSUseCase';
 import { RecusarOrcamentoUseCase } from '../../application/ordem-de-servico/recusar-orcamento/RecusarOrcamentoUseCase';
 import { RegistrarExecucaoUseCase } from '../../application/ordem-de-servico/registrar-execucao/RegistrarExecucaoUseCase';
+import { TempoMedioPorServicoUseCase } from '../../application/ordem-de-servico/tempo-medio-por-servico/TempoMedioPorServicoUseCase';
 import { OrdemDeServicoController } from './ordem-de-servico.controller';
 
 @Module({
@@ -19,6 +20,7 @@ import { OrdemDeServicoController } from './ordem-de-servico.controller';
     AprovarOrcamentoUseCase,
     RecusarOrcamentoUseCase,
     RegistrarExecucaoUseCase,
+    TempoMedioPorServicoUseCase,
   ],
 })
 export class OrdemDeServicoModule {}
