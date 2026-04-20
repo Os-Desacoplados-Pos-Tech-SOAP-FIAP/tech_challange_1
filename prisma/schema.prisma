@@ -1,0 +1,163 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PerfilAcesso {
+  ADMINISTRADOR
+  ATENDENTE
+  MECANICO
+}
+
+enum StatusOS {
+  RECEBIDA
+  EM_DIAGNOSTICO
+  AGUARDANDO_APROVACAO
+  EM_EXECUCAO
+  FINALIZADA
+  ENTREGUE
+  CANCELADA
+}
+
+enum TipoCliente {
+  PF
+  PJ
+}
+
+enum TipoPecaInsumo {
+  PECA
+  INSUMO
+}
+
+enum TipoItemOrcamento {
+  SERVICO
+  PECA
+}
+
+model Usuario {
+  id        String       @id @default(uuid())
+  nome      String
+  email     String       @unique
+  senha     String
+  perfil    PerfilAcesso
+  ativo     Boolean      @default(true)
+  criadoEm  DateTime     @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  execucoes ExecucaoDeServico[] @relation("ExecucaoMecanico")
+}
+
+model Cliente {
+  id        String      @id @default(uuid())
+  tipo      TipoCliente
+  cpfCnpj   String      @unique
+  nome      String
+  email     String
+  telefone  String?
+  criadoEm  DateTime    @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  veiculos         Veiculo[]
+  ordensDeServico  OrdemDeServico[]
+}
+
+model Veiculo {
+  id        String   @id @default(uuid())
+  placa     String   @unique
+  marca     String
+  modelo    String
+  ano       Int
+  clienteId String
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente         Cliente         @relation(fields: [clienteId], references: [id])
+  ordensDeServico OrdemDeServico[]
+}
+
+model Servico {
+  id          String   @id @default(uuid())
+  nome        String
+  descricao   String
+  valorPadrao Decimal  @db.Decimal(10, 2)
+  ativo       Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model PecaInsumo {
+  id                String         @id @default(uuid())
+  codigo            String         @unique
+  nome              String
+  tipo              TipoPecaInsumo
+  valorUnitario     Decimal        @db.Decimal(10, 2)
+  quantidadeEstoque Int
+  estoqueMinimo     Int
+  criadoEm          DateTime       @default(now())
+  atualizadoEm      DateTime       @updatedAt
+
+  pecasUtilizadas PecaUtilizada[]
+}
+
+model OrdemDeServico {
+  id            String    @id @default(uuid())
+  numero        Int       @unique @default(autoincrement())
+  clienteId     String
+  veiculoId     String
+  status        StatusOS  @default(RECEBIDA)
+  valorEstimado Decimal   @db.Decimal(10, 2) @default(0)
+  observacoes   String?
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+
+  cliente        Cliente             @relation(fields: [clienteId], references: [id])
+  veiculo        Veiculo             @relation(fields: [veiculoId], references: [id])
+  itensOrcamento ItemOrcamento[]
+  execucoes      ExecucaoDeServico[]
+}
+
+model ItemOrcamento {
+  id              String            @id @default(uuid())
+  ordemDeServicoId String
+  tipo            TipoItemOrcamento
+  referenciaId    String
+  descricao       String
+  quantidade      Int
+  valorUnitario   Decimal           @db.Decimal(10, 2)
+  valorTotal      Decimal           @db.Decimal(10, 2)
+  criadoEm        DateTime          @default(now())
+
+  ordemDeServico OrdemDeServico @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+}
+
+model ExecucaoDeServico {
+  id                   String   @id @default(uuid())
+  ordemDeServicoId     String
+  servicoId            String
+  mecanicoId           String
+  inicio               DateTime
+  fim                  DateTime?
+  tempoExecucaoMinutos Int?
+  observacoes          String?
+  criadoEm             DateTime @default(now())
+
+  ordemDeServico  OrdemDeServico  @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  mecanico        Usuario         @relation("ExecucaoMecanico", fields: [mecanicoId], references: [id])
+  pecasUtilizadas PecaUtilizada[]
+}
+
+model PecaUtilizada {
+  id                  String   @id @default(uuid())
+  execucaoDeServicoId String
+  pecaInsumoId        String
+  quantidade          Int
+  criadoEm            DateTime @default(now())
+
+  execucao ExecucaoDeServico @relation(fields: [execucaoDeServicoId], references: [id], onDelete: Cascade)
+  peca     PecaInsumo        @relation(fields: [pecaInsumoId], references: [id])
+}

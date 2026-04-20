@@ -1,236 +1,169 @@
-# Tech Challenge - Sistema de Oficina Mecânica 🚗
+# Tech Challenge — Sistema de Oficina Mecânica
 
-## Sobre o Projeto
+Back-end do MVP de um **Sistema Integrado de Atendimento e Execução de Serviços Automotivos**, desenvolvido em **NestJS** com arquitetura em **Domain-Driven Design (DDD)**.
 
-Este é o MVP (Minimum Viable Product) do back-end de um sistema integrado para oficinas mecânicas, desenvolvido como parte do Tech Challenge da pós-graduação. O sistema permite o gerenciamento completo de ordens de serviço, clientes, veículos e peças, com foco em eficiência e qualidade no atendimento.
+## Stack
 
-### 🎯 Objetivo
+- **Node.js 20+** / **TypeScript** (strict)
+- **NestJS 10** — framework modular
+- **PostgreSQL 16** + **Prisma** ORM
+- **JWT** (`@nestjs/jwt` + Passport) + **bcryptjs**
+- **class-validator** / **class-transformer**
+- **Swagger** (`@nestjs/swagger`)
+- **Jest** + **supertest**
+- **Docker** / **Docker Compose**
 
-Resolver os principais desafios de uma oficina mecânica de médio porte:
-- Organizar o fluxo de atendimento e execução de serviços
-- Controlar estoque de peças e insumos
-- Permitir acompanhamento em tempo real das ordens de serviço
-- Manter histórico completo de clientes e veículos
-- Automatizar orçamentos e autorizações
+## Arquitetura
 
-## 🛠️ Stack Tecnológica
-
-- **Node.js** - Plataforma de desenvolvimento
-- **Express** - Framework web
-- **TypeScript** - Tipagem estática
-- **PostgreSQL** - Banco de dados relacional
-- **Prisma ORM** - Gerenciamento de banco de dados
-- **JWT** - Autenticação e autorização
-- **Jest** - Testes automatizados
-- **Swagger** - Documentação da API
-- **Docker** - Containerização
-
-## 📋 Funcionalidades
-
-### Fluxos Principais
-
-#### 1. **Ordens de Serviço (OS)**
-- ✅ Criação de OS com identificação do cliente (CPF/CNPJ)
-- ✅ Cadastro/vinculação de veículos
-- ✅ Inclusão de serviços solicitados
-- ✅ Adição de peças e insumos necessários
-- ✅ Geração automática de orçamento
-- ✅ Envio para aprovação do cliente
-
-#### 2. **Acompanhamento de OS**
-- ✅ Status tracking completo:
-  - 📥 Recebida
-  - 🔧 Em diagnóstico
-  - ⏳ Aguardando aprovação
-  - ⚙️ Em execução
-  - ✅ Finalizada
-  - 🚗 Entregue
-- ✅ Atualização automática de status
-- ✅ Consulta pública para clientes
-
-#### 3. **Gestão Administrativa**
-- ✅ CRUD completo de clientes
-- ✅ CRUD de veículos
-- ✅ CRUD de serviços disponíveis
-- ✅ CRUD de peças com controle de estoque
-- ✅ Listagem e detalhamento de OS
-- ✅ Monitoramento de tempo médio de execução
-
-#### 4. **Segurança e Qualidade**
-- ✅ Autenticação JWT para rotas administrativas
-- ✅ Validação de dados sensíveis (CPF/CNPJ, placas)
-- ✅ Testes unitários e de integração
-- ✅ Cobertura mínima de 80% nos domínios críticos
-
-## 🏗️ Arquitetura
-
-O projeto segue os princípios do **Domain-Driven Design (DDD)** com a seguinte estrutura:
+Monolito modular com separação clara em camadas:
 
 ```
 src/
-├── domain/           # Camada de domínio (entidades, value objects, agregados)
-├── application/      # Casos de uso e serviços da aplicação
-├── infrastructure/   # Implementações concretas (repositórios, ORM)
-├── interfaces/       # Controllers, middlewares, rotas
-└── shared/          # Utilitários, constantes, erros
+├── domain/           # Entidades, VOs, eventos, interfaces de repositório, domain services (puro, sem NestJS)
+├── application/      # Use cases (@Injectable) que orquestram o domínio
+├── infrastructure/   # PrismaService, implementações de repositórios, auth (JWT, bcrypt)
+├── modules/          # Módulos NestJS: controllers + DTOs + binding de providers
+└── common/           # Guards, decorators, filters, interceptors, tokens de DI
 ```
 
-### 📊 Documentação DDD
+**Injeção de dependência:** interfaces de repositório no domínio; binding via `Symbol` tokens definidos em `src/common/constants/injection-tokens.ts` e registrados no `InfrastructureModule` (`@Global()`).
 
-- **Event Storming completo** disponível no Miro
-- **Linguagem Ubíqua** documentada
-- **Diagramas** de domínio e fluxos
+**Autorização global:** `JwtAuthGuard` + `RolesGuard` registrados via `APP_GUARD` em `app.module.ts`. Rotas públicas anotadas com `@Public()`. Controle por perfil via `@Roles(PerfilAcesso.X)`.
 
-## 🚀 Como Executar
+**Erros de domínio:** `DomainError` é capturado por `DomainExceptionFilter` e retorna **HTTP 422**. Exceções do NestJS (401/403/404/409) são respeitadas. Fallback catch-all em `AllExceptionsFilter` → 500.
 
-### Pré-requisitos
-- Docker e Docker Compose
-- Node.js 18+ (para desenvolvimento local)
-- npm ou yarn
+## Domínio
 
-### Instalação e Execução
+Agregados:
 
-1. **Clone o repositório**
-```bash
-git clone [url-do-repositorio]
-cd tech-challenge-oficina
+- **Cliente** (PF/PJ com CPF ou CNPJ)
+- **Veículo** (placa Mercosul ou antiga)
+- **Serviço** (catálogo com valor padrão)
+- **PeçaInsumo** (com estoque e baixa)
+- **Ordem de Serviço (OS)** — Aggregate Root com `ItemOrcamento[]` e `ExecucaoDeServico[]`
+
+Ciclo de status da OS:
+
+```
+RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA → ENTREGUE
+                                   ↓ (recusa total)
+                               CANCELADA
+                                   ↓ (recusa parcial)
+                            volta para EM_DIAGNOSTICO
 ```
 
-2. **Configure as variáveis de ambiente**
+Transições inválidas levantam `DomainError` (regra encapsulada em `StatusOS.transicionar()` + `TransicaoStatusService`).
+
+## Como executar
+
+### Com Docker (recomendado)
+
 ```bash
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+docker-compose up --build -d
 ```
 
-3. **Execute com Docker Compose**
-```bash
-docker-compose up -d
-```
+- API em: http://localhost:3000/api
+- Swagger: http://localhost:3000/api/docs
+- Postgres: `localhost:5432` (user: `oficina`, senha: `oficina123`)
 
-4. **Acesse a aplicação**
-- API: http://localhost:3000
-- Documentação Swagger: http://localhost:3000/api-docs
-- Banco de dados: localhost:5432
-
-### Execução sem Docker
-
-1. **Instale as dependências**
-```bash
-npm install
-```
-
-2. **Configure o banco de dados PostgreSQL**
-```bash
-# Certifique-se de ter o PostgreSQL instalado e rodando
-npm run prisma:migrate
-```
-
-3. **Inicie a aplicação**
-```bash
-npm run dev
-```
-
-## 📚 API Endpoints
-
-### Públicos (sem autenticação)
-- `GET /api/os/:id/acompanhamento` - Acompanhar OS por ID
-
-### Administrativos (requer JWT)
-#### Clientes
-- `POST /api/clientes` - Criar cliente
-- `GET /api/clientes` - Listar clientes
-- `GET /api/clientes/:id` - Buscar cliente
-- `PUT /api/clientes/:id` - Atualizar cliente
-- `DELETE /api/clientes/:id` - Remover cliente
-
-#### Veículos
-- `POST /api/veiculos` - Cadastrar veículo
-- `GET /api/veiculos` - Listar veículos
-- `GET /api/veiculos/cliente/:clienteId` - Veículos por cliente
-
-#### Serviços
-- `POST /api/servicos` - Criar serviço
-- `GET /api/servicos` - Listar serviços
-- `PUT /api/servicos/:id` - Atualizar serviço
-
-#### Peças
-- `POST /api/pecas` - Cadastrar peça
-- `GET /api/pecas` - Listar peças
-- `PUT /api/pecas/:id/estoque` - Atualizar estoque
-
-#### Ordens de Serviço
-- `POST /api/os` - Criar OS
-- `GET /api/os` - Listar OS
-- `GET /api/os/:id` - Detalhar OS
-- `PUT /api/os/:id/status` - Atualizar status
-- `POST /api/os/:id/aprovar` - Aprovar orçamento
-
-## 🧪 Testes
+Rodar o seed para criar o administrador inicial:
 
 ```bash
-# Executar testes unitários
-npm run test
-
-# Executar testes com cobertura
-npm run test:coverage
-
-# Executar testes e2e
-npm run test:e2e
+docker-compose exec api node -e "require('./dist/src/infrastructure/database/prisma/seed.js')" || true
 ```
 
-## 🐳 Comandos Docker Úteis
+> Alternativamente, sem Docker:
+> ```bash
+> npm install
+> npm run prisma:generate
+> npm run prisma:migrate
+> npm run prisma:seed
+> npm run start:dev
+> ```
+
+### Primeiros passos via Swagger
+
+1. `POST /api/auth/registrar` — primeiro usuário é livre (crie um Administrador).
+2. `POST /api/auth/login` — pegue o `accessToken`.
+3. Clique em **Authorize** no Swagger e informe `Bearer <token>`.
+4. Use as rotas de Clientes, Veículos, Serviços, Peças e Ordens de Serviço.
+
+## Perfis e permissões
+
+| Perfil         | Pode                                                              |
+|----------------|-------------------------------------------------------------------|
+| ADMINISTRADOR  | tudo, incluindo catálogo de serviços/peças e métricas             |
+| ATENDENTE      | clientes, veículos, criar OS, aprovar/recusar orçamento           |
+| MECANICO       | peças (consulta/baixa), registrar execuções, avançar status da OS |
+
+## Endpoints principais
+
+### Público
+- `GET /api/publico/os/:numero/status` — consulta de status pelo cliente (sem auth)
+- `POST /api/auth/login` / `POST /api/auth/registrar`
+
+### Administrativos (JWT)
+- `POST/GET/PUT/DELETE /api/clientes`
+- `POST/GET/PUT/DELETE /api/veiculos`
+- `POST/GET/PUT/DELETE /api/servicos`
+- `POST/GET/PATCH /api/pecas` + `PATCH /api/pecas/:id/estoque`
+- `POST/GET /api/ordens-de-servico`
+- `PATCH /api/ordens-de-servico/:id/status`
+- `POST /api/ordens-de-servico/:id/aprovar`
+- `POST /api/ordens-de-servico/:id/recusar`
+- `POST /api/ordens-de-servico/:id/execucoes`
+- `GET /api/ordens-de-servico/metricas/tempo-medio`
+
+## Testes
 
 ```bash
-# Construir as imagens
-docker-compose build
-
-# Iniciar os containers
-docker-compose up -d
-
-# Parar os containers
-docker-compose down
-
-# Visualizar logs
-docker-compose logs -f app
-
-# Executar migrações do banco
-docker-compose exec app npm run prisma:migrate
+npm test              # unitários
+npm run test:cov      # cobertura (mínimo 80% em domain e application)
+npm run test:e2e      # end-to-end (via TestingModule + Prisma mock)
 ```
 
-## 🔒 Segurança
+Os testes **unitários** cobrem Value Objects (CPF, CNPJ, Placa, Email, StatusOS), Domain Services (BaixaEstoqueService) e Use Cases (CadastrarClienteUseCase, CriarOSUseCase).
 
-- **JWT Tokens** para autenticação
-- **Validação de dados** com regex para CPF/CNPJ e placas
-- **Sanitização** de inputs
-- **Rate limiting** para prevenção de ataques
-- **Helmet.js** para headers de segurança
+Os testes **e2e** sobem o `AppModule` inteiro com um `PrismaService` mockado em memória — não exigem banco rodando.
 
-## 📊 Relatório de Vulnerabilidades
+## Scripts úteis
 
-Foi realizado um scan completo de vulnerabilidades no código utilizando as seguintes ferramentas:
-- **SonarQube** - Análise estática de código
-- **Snyk** - Verificação de dependências
-- **OWASP ZAP** - Testes de penetração básicos
+```bash
+npm run build             # compila com nest build
+npm run start:dev         # dev com watch
+npm run prisma:generate   # gera client
+npm run prisma:migrate    # cria migração em dev
+npm run prisma:seed       # cria usuário admin
+npm run docker:up         # docker-compose up --build -d
+npm run docker:down       # docker-compose down
+```
 
-O relatório completo está disponível na pasta `/docs/relatorio-vulnerabilidades.pdf`
+## Variáveis de ambiente
 
-## 👥 Equipe
+Veja `.env.example`:
 
-| Nome | Discord |
-|------|---------|
-| [Nome do Integrante 1] | @username1 |
-| [Nome do Integrante 2] | @username2 |
-| [Nome do Integrante 3] | @username3 |
+- `DATABASE_URL` — string de conexão Postgres
+- `JWT_SECRET` — segredo para assinatura do token
+- `JWT_EXPIRES_IN` — tempo de expiração (padrão: `8h`)
+- `PORT` — porta da API (padrão: `3000`)
+- `NODE_ENV` — `development` | `production`
 
-## 📝 Documentação
+## Estrutura DDD detalhada
 
-- [Documentação DDD no Miro](link-do-miro)
-- [Swagger UI](http://localhost:3000/api-docs)
-- [Relatório de Vulnerabilidades](/docs/relatorio-vulnerabilidades.pdf)
+Cada bounded context tem esta organização dentro de `src/domain/`:
 
-## 📄 Licença
+```
+<contexto>/
+├── entities/          # Aggregate root e entidades
+├── value-objects/     # VOs imutáveis com validação
+├── repositories/      # Interfaces (ports)
+├── events/            # Domain events
+└── services/          # Domain services (opcional)
+```
 
-Este projeto é parte integrante do curso de Pós-graduação em Arquitetura de Software.
+A camada de `application/` espelha a estrutura de contextos, com um subdiretório por use case.
 
----
-**Observação**: Este é um MVP e está em desenvolvimento ativo. Novas funcionalidades e melhorias serão implementadas nas próximas fases do projeto.
+## Licença
+
+Projeto acadêmico — parte do curso de Pós-graduação em Arquitetura de Software.
