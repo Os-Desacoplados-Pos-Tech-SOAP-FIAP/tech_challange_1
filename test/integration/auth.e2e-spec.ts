@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { PerfilAcesso } from '@prisma/client';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { createTestApp, TestContext } from '../helpers/setup';
 
