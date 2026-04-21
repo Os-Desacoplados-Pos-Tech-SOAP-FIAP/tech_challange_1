@@ -64,6 +64,6 @@
     "typescript": "^5.3.3"
   },
   "prisma": {
-    "seed": "ts-node src/infrastructure/database/prisma/seed.ts"
+    "seed": "node dist/infrastructure/database/prisma/seed.js"
   }
 }
