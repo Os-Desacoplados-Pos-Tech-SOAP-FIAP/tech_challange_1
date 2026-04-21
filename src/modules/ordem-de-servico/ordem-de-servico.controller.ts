@@ -34,7 +34,7 @@ export class OrdemDeServicoController {
   ) {}
 
   @Post()
-  @Roles(PerfilAcesso.ATENDENTE)
+  @Roles(PerfilAcesso.ATENDENTE, PerfilAcesso.ADMINISTRADOR)
   @ApiOperation({ summary: 'Cria nova Ordem de Serviço' })
   async create(@Body() dto: CriarOSDto): Promise<OSResponseDto> {
     const os = await this.criarOS.execute(dto);
