@@ -18,6 +18,7 @@ async function main(): Promise<void> {
    const SENHA_ADMIN = 'admin123';
    const SENHA_PADRAO = 'senha123';
    const hashSenha = (plain: string) => bcrypt.hash(plain, 12);
+   const digits = (value: string) => value.replace(/\D/g, '');
 
    await prisma.usuario.upsert({
       where: { email: 'admin@oficina.local' },
@@ -63,51 +64,55 @@ async function main(): Promise<void> {
       },
    });
 
+   const docJoao = digits('587.603.570-02');
    const joao = await prisma.cliente.upsert({
-      where: { documento: '587.603.570-02' },
+      where: { documento: docJoao },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         documento: '587.603.570-02',
+         documento: docJoao,
          nome: 'João Silva',
          email: 'joao@email.com',
-         telefone: '(31) 99999-0000',
+         telefone: digits('(31) 99999-0000'),
       },
    });
 
+   const docMaria = digits('370.252.660-94');
    const maria = await prisma.cliente.upsert({
-      where: { documento: '370.252.660-94' },
+      where: { documento: docMaria },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         documento: '370.252.660-94',
+         documento: docMaria,
          nome: 'Maria Souza',
          email: 'maria@email.com',
-         telefone: '(31) 98888-0000',
+         telefone: digits('(31) 98888-0000'),
       },
    });
 
+   const docAna = digits('329.567.570-83');
    const ana = await prisma.cliente.upsert({
-      where: { documento: '329.567.570-83' },
+      where: { documento: docAna },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         documento: '329.567.570-83',
+         documento: docAna,
          nome: 'Ana Lima',
          email: 'ana@email.com',
-         telefone: '(31) 97777-0000',
+         telefone: digits('(31) 97777-0000'),
       },
    });
 
+   const docAcme = digits('46.483.933/0001-88');
    const acme = await prisma.cliente.upsert({
-      where: { documento: '46.483.933/0001-88' },
+      where: { documento: docAcme },
       update: {},
       create: {
          tipo: TipoCliente.PJ,
-         documento: '46.483.933/0001-88',
+         documento: docAcme,
          nome: 'Transportadora ACME LTDA',
          email: 'contato@acme.com.br',
-         telefone: '(31) 3333-4444',
+         telefone: digits('(31) 3333-4444'),
       },
    });
 
