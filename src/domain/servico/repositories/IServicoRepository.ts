@@ -5,5 +5,4 @@ export interface IServicoRepository {
   salvar(servico: Servico): Promise<void>;
   buscarPorId(id: UniqueID): Promise<Servico | null>;
   listar(): Promise<Servico[]>;
-  remover(id: UniqueID): Promise<void>;
 }

@@ -4,7 +4,6 @@ import { AtualizarVeiculoUseCase } from '../../application/veiculo/atualizar-vei
 import { BuscarVeiculoUseCase } from '../../application/veiculo/buscar-veiculo/BuscarVeiculoUseCase';
 import { CadastrarVeiculoUseCase } from '../../application/veiculo/cadastrar-veiculo/CadastrarVeiculoUseCase';
 import { ListarVeiculosUseCase } from '../../application/veiculo/listar-veiculos/ListarVeiculosUseCase';
-import { RemoverVeiculoUseCase } from '../../application/veiculo/remover-veiculo/RemoverVeiculoUseCase';
 import { VeiculoController } from './veiculo.controller';
 
 @Module({
@@ -14,7 +13,6 @@ import { VeiculoController } from './veiculo.controller';
     BuscarVeiculoUseCase,
     ListarVeiculosUseCase,
     AtualizarVeiculoUseCase,
-    RemoverVeiculoUseCase,
   ],
 })
 export class VeiculoModule {}
