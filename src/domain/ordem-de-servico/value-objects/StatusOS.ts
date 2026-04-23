@@ -1,28 +1,7 @@
-import { DomainError } from '../../shared/DomainError';
+import { OsStateMachine, PerfilSolicitante } from '../state-machine/OsStateMachine';
+import { StatusOSEnum } from './StatusOSEnum';
 
-export enum StatusOSEnum {
-  RECEBIDA = 'RECEBIDA',
-  EM_DIAGNOSTICO = 'EM_DIAGNOSTICO',
-  AGUARDANDO_APROVACAO = 'AGUARDANDO_APROVACAO',
-  EM_EXECUCAO = 'EM_EXECUCAO',
-  FINALIZADA = 'FINALIZADA',
-  ENTREGUE = 'ENTREGUE',
-  CANCELADA = 'CANCELADA',
-}
-
-const TRANSICOES: Record<StatusOSEnum, StatusOSEnum[]> = {
-  [StatusOSEnum.RECEBIDA]: [StatusOSEnum.EM_DIAGNOSTICO, StatusOSEnum.CANCELADA],
-  [StatusOSEnum.EM_DIAGNOSTICO]: [StatusOSEnum.AGUARDANDO_APROVACAO, StatusOSEnum.CANCELADA],
-  [StatusOSEnum.AGUARDANDO_APROVACAO]: [
-    StatusOSEnum.EM_EXECUCAO,
-    StatusOSEnum.EM_DIAGNOSTICO,
-    StatusOSEnum.CANCELADA,
-  ],
-  [StatusOSEnum.EM_EXECUCAO]: [StatusOSEnum.FINALIZADA, StatusOSEnum.CANCELADA],
-  [StatusOSEnum.FINALIZADA]: [StatusOSEnum.ENTREGUE],
-  [StatusOSEnum.ENTREGUE]: [],
-  [StatusOSEnum.CANCELADA]: [],
-};
+export { StatusOSEnum };
 
 export class StatusOS {
   private constructor(private readonly _value: StatusOSEnum) {}
@@ -40,15 +19,14 @@ export class StatusOS {
   }
 
   public podeTransicionarPara(novo: StatusOSEnum): boolean {
-    return TRANSICOES[this._value].includes(novo);
+    return OsStateMachine.canTransition(this._value, novo);
   }
 
-  public transicionar(novo: StatusOSEnum): StatusOS {
-    if (!this.podeTransicionarPara(novo)) {
-      throw new DomainError(
-        `Transição inválida de ${this._value} para ${novo}`,
-        'TRANSICAO_STATUS_INVALIDA',
-      );
+  public transicionar(novo: StatusOSEnum, perfil?: PerfilSolicitante): StatusOS {
+    if (perfil) {
+      OsStateMachine.assertRoleAllowed(this._value, novo, perfil);
+    } else {
+      OsStateMachine.assertTransition(this._value, novo);
     }
     return new StatusOS(novo);
   }

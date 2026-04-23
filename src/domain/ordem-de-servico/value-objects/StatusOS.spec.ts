@@ -11,6 +11,7 @@ describe('StatusOS', () => {
     let s = StatusOS.inicial();
     s = s.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
     s = s.transicionar(StatusOSEnum.AGUARDANDO_APROVACAO);
+    s = s.transicionar(StatusOSEnum.APROVADA);
     s = s.transicionar(StatusOSEnum.EM_EXECUCAO);
     s = s.transicionar(StatusOSEnum.FINALIZADA);
     s = s.transicionar(StatusOSEnum.ENTREGUE);

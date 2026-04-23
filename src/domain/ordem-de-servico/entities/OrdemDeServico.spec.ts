@@ -114,14 +114,6 @@ describe('OrdemDeServico', () => {
     expect(os.status.value).toBe(StatusOSEnum.CANCELADA);
   });
 
-  it('recusa orçamento PARCIAL e volta para EM_DIAGNOSTICO', () => {
-    const os = makeOS();
-    os.transicionarPara(StatusOSEnum.EM_DIAGNOSTICO);
-    os.transicionarPara(StatusOSEnum.AGUARDANDO_APROVACAO);
-    os.recusarOrcamento('PARCIAL');
-    expect(os.status.value).toBe(StatusOSEnum.EM_DIAGNOSTICO);
-  });
-
   it('lança DomainError ao recusar orçamento fora de AGUARDANDO_APROVACAO', () => {
     const os = makeOS();
     expect(() => os.recusarOrcamento('TOTAL')).toThrow(DomainError);

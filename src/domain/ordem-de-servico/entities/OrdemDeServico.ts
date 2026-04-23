@@ -10,6 +10,7 @@ import { OSCriada } from '../events/OSCriada';
 import { OSEntregue } from '../events/OSEntregue';
 import { OSFinalizada } from '../events/OSFinalizada';
 import { ServicoExecutado } from '../events/ServicoExecutado';
+import { PerfilSolicitante } from '../state-machine/OsStateMachine';
 import { NumeroOS } from '../value-objects/NumeroOS';
 import { StatusOS, StatusOSEnum } from '../value-objects/StatusOS';
 import { ValorEstimado } from '../value-objects/ValorEstimado';
@@ -102,8 +103,8 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
     this.touch();
   }
 
-  public transicionarPara(novoStatus: StatusOSEnum): void {
-    this.props.status = this.props.status.transicionar(novoStatus);
+  public transicionarPara(novoStatus: StatusOSEnum, perfil?: PerfilSolicitante): void {
+    this.props.status = this.props.status.transicionar(novoStatus, perfil);
     this.touch();
     if (novoStatus === StatusOSEnum.AGUARDANDO_APROVACAO) {
       this.addDomainEvent(new DiagnosticoConcluido(this.id));
@@ -124,24 +125,25 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
         'APROVACAO_FASE_INVALIDA',
       );
     }
-    this.transicionarPara(StatusOSEnum.EM_EXECUCAO);
+    this.props.status = this.props.status.transicionar(StatusOSEnum.APROVADA);
+    this.touch();
     this.addDomainEvent(new OrcamentoAprovado(this.id));
+    this.props.status = this.props.status.transicionar(StatusOSEnum.EM_EXECUCAO);
+    this.touch();
   }
 
-  public recusarOrcamento(motivo: 'TOTAL' | 'PARCIAL'): void {
+  public recusarOrcamento(motivo: 'TOTAL' = 'TOTAL'): void {
     if (this.props.status.value !== StatusOSEnum.AGUARDANDO_APROVACAO) {
       throw new DomainError(
         'Só é possível recusar orçamento no status AGUARDANDO_APROVACAO',
         'RECUSA_FASE_INVALIDA',
       );
     }
-    if (motivo === 'TOTAL') {
-      this.transicionarPara(StatusOSEnum.CANCELADA);
-    } else {
-      this.props.status = this.props.status.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
-      this.touch();
-    }
+    this.props.status = this.props.status.transicionar(StatusOSEnum.REPROVADA);
+    this.touch();
     this.addDomainEvent(new OrcamentoRecusado(this.id, motivo));
+    this.props.status = this.props.status.transicionar(StatusOSEnum.CANCELADA);
+    this.touch();
   }
 
   public registrarExecucao(execucao: ExecucaoDeServico): void {
@@ -154,5 +156,18 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
     this.props.execucoes.push(execucao);
     this.touch();
     this.addDomainEvent(new ServicoExecutado(this.id, execucao.id));
+  }
+
+  public finalizarExecucao(execucaoId: string, fim: Date = new Date()): void {
+    const execucao = this.props.execucoes.find((e) => e.id.toValue() === execucaoId);
+    if (!execucao) {
+      throw new DomainError('Execução não encontrada nesta OS', 'EXECUCAO_NAO_ENCONTRADA');
+    }
+    execucao.finalizar(fim);
+    this.touch();
+  }
+
+  public get todasExecucoesFinalizadas(): boolean {
+    return this.props.execucoes.length > 0 && this.props.execucoes.every((e) => !e.emAndamento);
   }
 }
