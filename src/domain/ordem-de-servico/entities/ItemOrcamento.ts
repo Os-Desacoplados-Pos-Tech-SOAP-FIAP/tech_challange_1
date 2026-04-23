@@ -4,7 +4,7 @@ import { UniqueID } from '../../shared/UniqueID';
 
 export enum TipoItemOrcamento {
   SERVICO = 'SERVICO',
-  PECA = 'PECA',
+  INSUMO = 'INSUMO',
 }
 
 export interface ItemOrcamentoProps extends EntityProps {
