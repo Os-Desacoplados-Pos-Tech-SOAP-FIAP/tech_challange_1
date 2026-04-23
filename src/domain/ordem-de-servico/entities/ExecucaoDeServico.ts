@@ -2,8 +2,8 @@ import { DomainError } from '../../shared/DomainError';
 import { Entity, EntityProps } from '../../shared/Entity';
 import { UniqueID } from '../../shared/UniqueID';
 
-export interface PecaUtilizada {
-  pecaInsumoId: UniqueID;
+export interface InsumoUtilizado {
+  insumoId: UniqueID;
   quantidade: number;
 }
 
@@ -13,7 +13,7 @@ export interface ExecucaoDeServicoProps extends EntityProps {
   inicio: Date;
   fim?: Date;
   observacoes?: string;
-  pecasUtilizadas: PecaUtilizada[];
+  insumosUtilizados: InsumoUtilizado[];
 }
 
 export interface NovaExecucaoInput {
@@ -22,7 +22,7 @@ export interface NovaExecucaoInput {
   inicio: Date;
   fim?: Date;
   observacoes?: string;
-  pecasUtilizadas?: Array<{ pecaInsumoId: string; quantidade: number }>;
+  insumosUtilizados?: Array<{ insumoId: string; quantidade: number }>;
 }
 
 export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
@@ -40,8 +40,8 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
       inicio: input.inicio,
       fim: input.fim,
       observacoes: input.observacoes?.trim(),
-      pecasUtilizadas: (input.pecasUtilizadas ?? []).map((p) => ({
-        pecaInsumoId: new UniqueID(p.pecaInsumoId),
+      insumosUtilizados: (input.insumosUtilizados ?? []).map((p) => ({
+        insumoId: new UniqueID(p.insumoId),
         quantidade: p.quantidade,
       })),
     });
@@ -66,12 +66,26 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
   public get observacoes(): string | undefined {
     return this.props.observacoes;
   }
-  public get pecasUtilizadas(): ReadonlyArray<PecaUtilizada> {
-    return this.props.pecasUtilizadas;
+  public get insumosUtilizados(): ReadonlyArray<InsumoUtilizado> {
+    return this.props.insumosUtilizados;
   }
 
   public get tempoExecucaoMinutos(): number | undefined {
     if (!this.props.fim) return undefined;
     return Math.round((this.props.fim.getTime() - this.props.inicio.getTime()) / 60000);
+  }
+
+  public get emAndamento(): boolean {
+    return this.props.fim === undefined;
+  }
+
+  public finalizar(fim: Date = new Date()): void {
+    if (this.props.fim) {
+      throw new DomainError('Execução já finalizada', 'EXECUCAO_JA_FINALIZADA');
+    }
+    if (fim < this.props.inicio) {
+      throw new DomainError('Fim anterior ao início da execução', 'EXECUCAO_PERIODO_INVALIDO');
+    }
+    this.props.fim = fim;
   }
 }

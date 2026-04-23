@@ -2,44 +2,29 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
 import { ensureFound } from '../../../common/utils/ensure-found';
-import { ExecucaoDeServico } from '../../../domain/ordem-de-servico/entities/ExecucaoDeServico';
 import { OrdemDeServico } from '../../../domain/ordem-de-servico/entities/OrdemDeServico';
 import { IOrdemDeServicoRepository } from '../../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 
-export interface RegistrarExecucaoInput {
+interface FinalizarExecucaoInput {
   ordemDeServicoId: string;
-  servicoId: string;
-  mecanicoId: string;
-  inicio: Date;
+  execucaoId: string;
   fim?: Date;
-  observacoes?: string;
-  insumosUtilizados?: Array<{ insumoId: string; quantidade: number }>;
 }
 
 @Injectable()
-export class RegistrarExecucaoUseCase {
+export class FinalizarExecucaoUseCase {
   constructor(
     @Inject(INJECTION_TOKENS.ORDEM_DE_SERVICO_REPOSITORY)
     private readonly osRepository: IOrdemDeServicoRepository,
   ) {}
 
-  async execute(input: RegistrarExecucaoInput): Promise<OrdemDeServico> {
+  async execute(input: FinalizarExecucaoInput): Promise<OrdemDeServico> {
     const os = ensureFound(
       await this.osRepository.buscarPorId(new UniqueID(input.ordemDeServicoId)),
       'OS',
     );
-
-    const execucao = ExecucaoDeServico.criar({
-      servicoId: input.servicoId,
-      mecanicoId: input.mecanicoId,
-      inicio: input.inicio,
-      fim: input.fim,
-      observacoes: input.observacoes,
-      insumosUtilizados: input.insumosUtilizados,
-    });
-
-    os.registrarExecucao(execucao);
+    os.finalizarExecucao(input.execucaoId, input.fim ?? new Date());
     await this.osRepository.salvar(os);
     return os;
   }
