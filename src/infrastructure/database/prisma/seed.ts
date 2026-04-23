@@ -15,8 +15,9 @@ const SEED_MARKER = '[SEED]';
 async function main(): Promise<void> {
    console.log('Executando seed...');
 
-   const senhaAdminHash = await bcrypt.hash('admin123', 12);
-   const senhaPadraoHash = await bcrypt.hash('senha123', 12);
+   const SENHA_ADMIN = 'admin123';
+   const SENHA_PADRAO = 'senha123';
+   const hashSenha = (plain: string) => bcrypt.hash(plain, 12);
 
    await prisma.usuario.upsert({
       where: { email: 'admin@oficina.local' },
@@ -24,7 +25,7 @@ async function main(): Promise<void> {
       create: {
          nome: 'Administrador',
          email: 'admin@oficina.local',
-         senha: senhaAdminHash,
+         senha: await hashSenha(SENHA_ADMIN),
          perfil: PerfilAcesso.ADMINISTRADOR,
       },
    });
@@ -35,7 +36,7 @@ async function main(): Promise<void> {
       create: {
          nome: 'Carla Atendente',
          email: 'atendente@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.ATENDENTE,
       },
    });
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
       create: {
          nome: 'Pedro Mecânico',
          email: 'mecanico1@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.MECANICO,
       },
    });
@@ -57,7 +58,7 @@ async function main(): Promise<void> {
       create: {
          nome: 'Rafael Mecânico',
          email: 'mecanico2@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.MECANICO,
       },
    });
