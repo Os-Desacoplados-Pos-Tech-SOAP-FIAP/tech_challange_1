@@ -7,5 +7,4 @@ export interface IVeiculoRepository {
   buscarPorPlaca(placa: string): Promise<Veiculo | null>;
   listar(): Promise<Veiculo[]>;
   listarPorCliente(clienteId: UniqueID): Promise<Veiculo[]>;
-  remover(id: UniqueID): Promise<void>;
 }

@@ -1,13 +1,12 @@
-import { DomainEvent } from '../../shared/DomainEvent';
+import { BaseDomainEvent } from '../../shared/DomainEvent';
+import { EVENTS } from '../../shared/events/EventNames';
 import { UniqueID } from '../../shared/UniqueID';
 
-export class ServicoExecutado implements DomainEvent {
-  public readonly ocorridoEm: Date;
-  public readonly eventName = 'ServicoExecutado';
+export class ServicoExecutado extends BaseDomainEvent {
   constructor(
-    public readonly aggregateId: UniqueID,
+    aggregateId: UniqueID,
     public readonly execucaoId: UniqueID,
   ) {
-    this.ocorridoEm = new Date();
+    super(aggregateId, EVENTS.OS_SERVICO_EXECUTADO, 'ServicoExecutado');
   }
 }

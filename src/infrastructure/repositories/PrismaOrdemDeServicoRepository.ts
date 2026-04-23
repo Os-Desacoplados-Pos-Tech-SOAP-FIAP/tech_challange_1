@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   ExecucaoDeServico as PrismaExecucao,
+  InsumoUtilizado as PrismaInsumoUtilizado,
   ItemOrcamento as PrismaItemOrcamento,
   OrdemDeServico as PrismaOS,
-  PecaUtilizada as PrismaPecaUtilizada,
   StatusOS as PrismaStatusOS,
   TipoItemOrcamento as PrismaTipoItemOrcamento,
 } from '@prisma/client';
@@ -25,15 +25,19 @@ import { NumeroOS } from '../../domain/ordem-de-servico/value-objects/NumeroOS';
 import { StatusOS, StatusOSEnum } from '../../domain/ordem-de-servico/value-objects/StatusOS';
 import { UniqueID } from '../../domain/shared/UniqueID';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { EventDispatcher } from '../events/EventDispatcher';
 
 type PrismaOSCompleta = PrismaOS & {
   itensOrcamento: PrismaItemOrcamento[];
-  execucoes: (PrismaExecucao & { pecasUtilizadas: PrismaPecaUtilizada[] })[];
+  execucoes: (PrismaExecucao & { insumosUtilizados: PrismaInsumoUtilizado[] })[];
 };
 
 @Injectable()
 export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventDispatcher: EventDispatcher,
+  ) {}
 
   private toDomain(row: PrismaOSCompleta): OrdemDeServico {
     const itens = row.itensOrcamento.map((i) =>
@@ -42,7 +46,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
           tipo:
             i.tipo === PrismaTipoItemOrcamento.SERVICO
               ? TipoItemOrcamento.SERVICO
-              : TipoItemOrcamento.PECA,
+              : TipoItemOrcamento.INSUMO,
           referenciaId: new UniqueID(i.referenciaId),
           descricao: i.descricao,
           quantidade: i.quantidade,
@@ -61,8 +65,8 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
         inicio: e.inicio,
         fim: e.fim ?? undefined,
         observacoes: e.observacoes ?? undefined,
-        pecasUtilizadas: e.pecasUtilizadas.map((p) => ({
-          pecaInsumoId: new UniqueID(p.pecaInsumoId),
+        insumosUtilizados: e.insumosUtilizados.map((p) => ({
+          insumoId: new UniqueID(p.insumoId),
           quantidade: p.quantidade,
         })),
         criadoEm: e.criadoEm,
@@ -117,7 +121,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
             tipo:
               i.tipo === TipoItemOrcamento.SERVICO
                 ? PrismaTipoItemOrcamento.SERVICO
-                : PrismaTipoItemOrcamento.PECA,
+                : PrismaTipoItemOrcamento.INSUMO,
             referenciaId: i.referenciaId.toValue(),
             descricao: i.descricao,
             quantidade: i.quantidade,
@@ -147,18 +151,19 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
             observacoes: execucao.observacoes ?? null,
           },
         });
-        await tx.pecaUtilizada.deleteMany({ where: { execucaoDeServicoId: execId } });
-        if (execucao.pecasUtilizadas.length > 0) {
-          await tx.pecaUtilizada.createMany({
-            data: execucao.pecasUtilizadas.map((p) => ({
+        await tx.insumoUtilizado.deleteMany({ where: { execucaoDeServicoId: execId } });
+        if (execucao.insumosUtilizados.length > 0) {
+          await tx.insumoUtilizado.createMany({
+            data: execucao.insumosUtilizados.map((p) => ({
               execucaoDeServicoId: execId,
-              pecaInsumoId: p.pecaInsumoId.toValue(),
+              insumoId: p.insumoId.toValue(),
               quantidade: p.quantidade,
             })),
           });
         }
       }
     });
+    await this.eventDispatcher.publish(os.pullEvents());
   }
 
   async buscarPorId(id: UniqueID): Promise<OrdemDeServico | null> {
@@ -166,7 +171,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
       where: { id: id.toValue() },
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: { include: { insumosUtilizados: true } },
       },
     });
     return row ? this.toDomain(row) : null;
@@ -177,7 +182,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
       where: { numero },
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: { include: { insumosUtilizados: true } },
       },
     });
     return row ? this.toDomain(row) : null;
@@ -187,7 +192,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
     const rows = await this.prisma.ordemDeServico.findMany({
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: { include: { insumosUtilizados: true } },
       },
       orderBy: { criadoEm: 'desc' },
     });
@@ -205,7 +210,10 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
   async tempoMedioExecucaoMinutos(): Promise<number> {
     const result = await this.prisma.execucaoDeServico.aggregate({
       _avg: { tempoExecucaoMinutos: true },
-      where: { tempoExecucaoMinutos: { not: null } },
+      where: {
+        tempoExecucaoMinutos: { not: null },
+        ordemDeServico: { status: { in: ['FINALIZADA', 'ENTREGUE'] } },
+      },
     });
     return Math.round(result._avg.tempoExecucaoMinutos ?? 0);
   }
@@ -213,7 +221,10 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
   async tempoMedioExecucaoPorServico(): Promise<TempoMedioPorServicoRow[]> {
     const rows = await this.prisma.execucaoDeServico.groupBy({
       by: ['servicoId'],
-      where: { tempoExecucaoMinutos: { not: null } },
+      where: {
+        tempoExecucaoMinutos: { not: null },
+        ordemDeServico: { status: { in: ['FINALIZADA', 'ENTREGUE'] } },
+      },
       _avg: { tempoExecucaoMinutos: true },
       _count: { _all: true },
     });
