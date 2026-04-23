@@ -36,7 +36,7 @@ describe('CadastrarVeiculoUseCase', () => {
     veiculoRepo = new InMemoryVeiculoRepository();
     clienteRepo = new InMemoryClienteRepository();
     useCase = new CadastrarVeiculoUseCase(veiculoRepo, clienteRepo);
-    cliente = Cliente.criar({ tipo: TipoCliente.PF, cpfCnpj: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
+    cliente = Cliente.criar({ tipo: TipoCliente.PF, documento: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
     clienteRepo.clientes.push(cliente);
   });
 

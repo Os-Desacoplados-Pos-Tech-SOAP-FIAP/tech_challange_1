@@ -76,7 +76,7 @@ describe('CriarOSUseCase', () => {
   beforeEach(() => {
     cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '52998224725',
+      documento: '52998224725',
       nome: 'Cliente Teste',
       email: 'cliente@teste.com',
     });

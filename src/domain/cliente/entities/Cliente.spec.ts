@@ -5,7 +5,7 @@ describe('Cliente', () => {
   it('cria cliente PF com CPF válido', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
     });
@@ -17,7 +17,7 @@ describe('Cliente', () => {
   it('cria cliente PJ com CNPJ válido', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PJ,
-      cpfCnpj: '11.222.333/0001-81',
+      documento: '11.222.333/0001-81',
       nome: 'Empresa SA',
       email: 'empresa@email.com',
     });
@@ -27,7 +27,7 @@ describe('Cliente', () => {
   it('cria cliente com telefone', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
       telefone: '11999999999',
@@ -39,7 +39,7 @@ describe('Cliente', () => {
     expect(() =>
       Cliente.criar({
         tipo: TipoCliente.PF,
-        cpfCnpj: '529.982.247-25',
+        documento: '529.982.247-25',
         nome: 'Jo',
         email: 'joao@email.com',
       }),
@@ -49,7 +49,7 @@ describe('Cliente', () => {
   it('dispara evento ClienteCadastrado ao criar', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
     });
@@ -60,7 +60,7 @@ describe('Cliente', () => {
   it('atualiza nome e email', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
     });
@@ -72,7 +72,7 @@ describe('Cliente', () => {
   it('lança DomainError ao atualizar nome curto', () => {
     const cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
     });

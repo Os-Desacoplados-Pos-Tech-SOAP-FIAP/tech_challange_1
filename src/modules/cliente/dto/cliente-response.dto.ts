@@ -5,7 +5,7 @@ import { Cliente, TipoCliente } from '../../../domain/cliente/entities/Cliente';
 export class ClienteResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: TipoCliente }) tipo!: TipoCliente;
-  @ApiProperty() cpfCnpj!: string;
+  @ApiProperty() documento!: string;
   @ApiProperty() nome!: string;
   @ApiProperty() email!: string;
   @ApiProperty({ required: false }) telefone?: string;
@@ -16,7 +16,7 @@ export class ClienteResponseDto {
     return {
       id: c.id.toValue(),
       tipo: c.tipo,
-      cpfCnpj: c.cpfCnpj.value,
+      documento: c.documento.value,
       nome: c.nome,
       email: c.email.value,
       telefone: c.telefone?.value,
