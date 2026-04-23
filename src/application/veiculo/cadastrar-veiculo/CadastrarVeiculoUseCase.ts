@@ -1,6 +1,7 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { IClienteRepository } from '../../../domain/cliente/repositories/IClienteRepository';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 import { NovoVeiculoInput, Veiculo } from '../../../domain/veiculo/entities/Veiculo';
@@ -16,8 +17,10 @@ export class CadastrarVeiculoUseCase {
   ) {}
 
   async execute(input: NovoVeiculoInput): Promise<Veiculo> {
-    const cliente = await this.clienteRepository.buscarPorId(new UniqueID(input.clienteId));
-    if (!cliente) throw new NotFoundException('Cliente não encontrado');
+    ensureFound(
+      await this.clienteRepository.buscarPorId(new UniqueID(input.clienteId)),
+      'Cliente',
+    );
     const veiculo = Veiculo.criar(input);
     const existente = await this.veiculoRepository.buscarPorPlaca(veiculo.placa.value);
     if (existente) {
