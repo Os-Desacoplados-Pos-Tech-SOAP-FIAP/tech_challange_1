@@ -3,8 +3,8 @@ import {
    PrismaClient,
    StatusOS,
    TipoCliente,
+   TipoInsumo,
    TipoItemOrcamento,
-   TipoPecaInsumo,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -63,11 +63,11 @@ async function main(): Promise<void> {
    });
 
    const joao = await prisma.cliente.upsert({
-      where: { cpfCnpj: '587.603.570-02' },
+      where: { documento: '587.603.570-02' },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         cpfCnpj: '587.603.570-02',
+         documento: '587.603.570-02',
          nome: 'João Silva',
          email: 'joao@email.com',
          telefone: '(31) 99999-0000',
@@ -75,11 +75,11 @@ async function main(): Promise<void> {
    });
 
    const maria = await prisma.cliente.upsert({
-      where: { cpfCnpj: '370.252.660-94' },
+      where: { documento: '370.252.660-94' },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         cpfCnpj: '370.252.660-94',
+         documento: '370.252.660-94',
          nome: 'Maria Souza',
          email: 'maria@email.com',
          telefone: '(31) 98888-0000',
@@ -87,11 +87,11 @@ async function main(): Promise<void> {
    });
 
    const ana = await prisma.cliente.upsert({
-      where: { cpfCnpj: '329.567.570-83' },
+      where: { documento: '329.567.570-83' },
       update: {},
       create: {
          tipo: TipoCliente.PF,
-         cpfCnpj: '329.567.570-83',
+         documento: '329.567.570-83',
          nome: 'Ana Lima',
          email: 'ana@email.com',
          telefone: '(31) 97777-0000',
@@ -99,11 +99,11 @@ async function main(): Promise<void> {
    });
 
    const acme = await prisma.cliente.upsert({
-      where: { cpfCnpj: '46.483.933/0001-88' },
+      where: { documento: '46.483.933/0001-88' },
       update: {},
       create: {
          tipo: TipoCliente.PJ,
-         cpfCnpj: '46.483.933/0001-88',
+         documento: '46.483.933/0001-88',
          nome: 'Transportadora ACME LTDA',
          email: 'contato@acme.com.br',
          telefone: '(31) 3333-4444',
@@ -214,65 +214,65 @@ async function main(): Promise<void> {
       600,
    );
 
-   const filtroOleo = await prisma.pecaInsumo.upsert({
+   const filtroOleo = await prisma.insumo.upsert({
       where: { codigo: 'PEC-001' },
       update: {},
       create: {
          codigo: 'PEC-001',
          nome: 'Filtro de óleo',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 35.9,
          quantidadeEstoque: 50,
          estoqueMinimo: 5,
       },
    });
 
-   const oleoMotor = await prisma.pecaInsumo.upsert({
+   const oleoMotor = await prisma.insumo.upsert({
       where: { codigo: 'INS-001' },
       update: {},
       create: {
          codigo: 'INS-001',
          nome: 'Óleo 5W30 1L',
-         tipo: TipoPecaInsumo.INSUMO,
+         tipo: TipoInsumo.INSUMO,
          valorUnitario: 45,
          quantidadeEstoque: 100,
          estoqueMinimo: 10,
       },
    });
 
-   const pastilhaFreio = await prisma.pecaInsumo.upsert({
+   const pastilhaFreio = await prisma.insumo.upsert({
       where: { codigo: 'PEC-002' },
       update: {},
       create: {
          codigo: 'PEC-002',
          nome: 'Pastilha de freio dianteira',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 180,
          quantidadeEstoque: 30,
          estoqueMinimo: 4,
       },
    });
 
-   const correia = await prisma.pecaInsumo.upsert({
+   const correia = await prisma.insumo.upsert({
       where: { codigo: 'PEC-003' },
       update: {},
       create: {
          codigo: 'PEC-003',
          nome: 'Correia dentada',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 220,
          quantidadeEstoque: 15,
          estoqueMinimo: 3,
       },
    });
 
-   const pneu = await prisma.pecaInsumo.upsert({
+   const pneu = await prisma.insumo.upsert({
       where: { codigo: 'PEC-004' },
       update: {},
       create: {
          codigo: 'PEC-004',
          nome: 'Pneu aro 15',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 420,
          quantidadeEstoque: 20,
          estoqueMinimo: 4,
@@ -333,7 +333,7 @@ async function main(): Promise<void> {
                   valorTotal: 120.5,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: filtroOleo.id,
                   descricao: 'Filtro de óleo',
                   quantidade: 1,
@@ -341,7 +341,7 @@ async function main(): Promise<void> {
                   valorTotal: 35,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: oleoMotor.id,
                   descricao: 'Óleo 5W30',
                   quantidade: 4,
@@ -381,7 +381,7 @@ async function main(): Promise<void> {
                   valorTotal: 250,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: pastilhaFreio.id,
                   descricao: 'Pastilha dianteira',
                   quantidade: 1,
@@ -406,8 +406,8 @@ async function main(): Promise<void> {
                   inicio: horasAtras(2),
                   fim: null,
                   observacoes: 'Iniciando troca de pastilhas',
-                  pecasUtilizadas: {
-                     create: [{ pecaInsumoId: pastilhaFreio.id, quantidade: 1 }],
+                  insumosUtilizados: {
+                     create: [{ insumoId: pastilhaFreio.id, quantidade: 1 }],
                   },
                },
             ],
@@ -434,7 +434,7 @@ async function main(): Promise<void> {
                   valorTotal: 600,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: correia.id,
                   descricao: 'Correia dentada',
                   quantidade: 1,
@@ -442,7 +442,7 @@ async function main(): Promise<void> {
                   valorTotal: 220,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: filtroOleo.id,
                   descricao: 'Filtro de óleo',
                   quantidade: 1,
@@ -460,10 +460,10 @@ async function main(): Promise<void> {
                   fim: horasAtras(8),
                   tempoExecucaoMinutos: 120,
                   observacoes: 'Revisão completa incluindo troca de correia',
-                  pecasUtilizadas: {
+                  insumosUtilizados: {
                      create: [
-                        { pecaInsumoId: correia.id, quantidade: 1 },
-                        { pecaInsumoId: filtroOleo.id, quantidade: 1 },
+                        { insumoId: correia.id, quantidade: 1 },
+                        { insumoId: filtroOleo.id, quantidade: 1 },
                      ],
                   },
                },
@@ -483,7 +483,7 @@ async function main(): Promise<void> {
          itensOrcamento: {
             create: [
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: pneu.id,
                   descricao: 'Pneu aro 15',
                   quantidade: 4,
@@ -509,8 +509,8 @@ async function main(): Promise<void> {
                   fim: horasAtras(45),
                   tempoExecucaoMinutos: 180,
                   observacoes: 'Troca dos quatro pneus com alinhamento',
-                  pecasUtilizadas: {
-                     create: [{ pecaInsumoId: pneu.id, quantidade: 4 }],
+                  insumosUtilizados: {
+                     create: [{ insumoId: pneu.id, quantidade: 4 }],
                   },
                },
             ],

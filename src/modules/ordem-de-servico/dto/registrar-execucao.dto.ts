@@ -11,10 +11,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class PecaUtilizadaDto {
+export class InsumoUtilizadoDto {
   @ApiProperty()
   @IsUUID()
-  pecaInsumoId!: string;
+  insumoId!: string;
 
   @ApiProperty()
   @IsInt()
@@ -47,10 +47,10 @@ export class RegistrarExecucaoDto {
   @IsString()
   observacoes?: string;
 
-  @ApiProperty({ type: [PecaUtilizadaDto], required: false })
+  @ApiProperty({ type: [InsumoUtilizadoDto], required: false })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PecaUtilizadaDto)
-  pecasUtilizadas?: PecaUtilizadaDto[];
+  @Type(() => InsumoUtilizadoDto)
+  insumosUtilizados?: InsumoUtilizadoDto[];
 }

@@ -48,7 +48,7 @@ export function createPrismaMock() {
     cliente: {
       findUnique: async ({ where }: any) => {
         if (where.id) return clientes.find((c) => c.id === where.id) ?? null;
-        if (where.cpfCnpj) return clientes.find((c) => c.cpfCnpj === where.cpfCnpj) ?? null;
+        if (where.documento) return clientes.find((c) => c.documento === where.documento) ?? null;
         return null;
       },
       findMany: async () => clientes,
@@ -61,7 +61,7 @@ export function createPrismaMock() {
         const c = {
           id: create.id,
           tipo: create.tipo as TipoCliente,
-          cpfCnpj: create.cpfCnpj,
+          documento: create.documento,
           nome: create.nome,
           email: create.email,
           telefone: create.telefone ?? null,
@@ -118,7 +118,7 @@ export function createPrismaMock() {
       upsert: async ({ create }: any) => create,
       delete: async () => ({}),
     },
-    pecaInsumo: {
+    insumo: {
       findUnique: async () => null,
       findMany: async () => [],
       upsert: async ({ create }: any) => create,
@@ -136,7 +136,7 @@ export function createPrismaMock() {
             itensOrcamento: itensOrcamento.filter((i) => i.ordemDeServicoId === found.id),
             execucoes: execucoes
               .filter((e) => e.ordemDeServicoId === found.id)
-              .map((e) => ({ ...e, pecasUtilizadas: [] })),
+              .map((e) => ({ ...e, insumosUtilizados: [] })),
           };
         }
         return found;
@@ -151,7 +151,7 @@ export function createPrismaMock() {
           itensOrcamento: itensOrcamento.filter((i) => i.ordemDeServicoId === o.id),
           execucoes: execucoes
             .filter((e) => e.ordemDeServicoId === o.id)
-            .map((e) => ({ ...e, pecasUtilizadas: [] })),
+            .map((e) => ({ ...e, insumosUtilizados: [] })),
         })),
       upsert: async ({ where, create, update }: any) => {
         const idx = oss.findIndex((o) => o.id === where.id);
@@ -196,7 +196,7 @@ export function createPrismaMock() {
       },
       aggregate: async () => ({ _avg: { tempoExecucaoMinutos: 0 } }),
     },
-    pecaUtilizada: {
+    insumoUtilizado: {
       deleteMany: async () => ({ count: 0 }),
       createMany: async ({ data }: any) => ({ count: data.length }),
     },

@@ -31,12 +31,12 @@ describe('ExecucaoDeServico', () => {
     ).toThrow(DomainError);
   });
 
-  it('cria execução com peças utilizadas', () => {
+  it('cria execução com insumos utilizados', () => {
     const e = ExecucaoDeServico.criar({
       ...base,
-      pecasUtilizadas: [{ pecaInsumoId: new UniqueID().toValue(), quantidade: 2 }],
+      insumosUtilizados: [{ insumoId: new UniqueID().toValue(), quantidade: 2 }],
     });
-    expect(e.pecasUtilizadas).toHaveLength(1);
+    expect(e.insumosUtilizados).toHaveLength(1);
   });
 
   it('cria execução com observações (trim)', () => {
