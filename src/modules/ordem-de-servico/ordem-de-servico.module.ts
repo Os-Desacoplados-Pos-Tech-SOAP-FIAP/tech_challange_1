@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { AprovarOrcamentoUseCase } from '../../application/ordem-de-servico/aprovar-orcamento/AprovarOrcamentoUseCase';
+import { AdicionarItemUseCase } from '../../application/ordem-de-servico/adicionar-item/AdicionarItemUseCase';
 import { AvancarStatusUseCase } from '../../application/ordem-de-servico/avancar-status/AvancarStatusUseCase';
 import { ConsultarOSUseCase } from '../../application/ordem-de-servico/consultar-os/ConsultarOSUseCase';
 import { CriarOSUseCase } from '../../application/ordem-de-servico/criar-os/CriarOSUseCase';
+import { FinalizarExecucaoUseCase } from '../../application/ordem-de-servico/finalizar-execucao/FinalizarExecucaoUseCase';
 import { ListarOSUseCase } from '../../application/ordem-de-servico/listar-os/ListarOSUseCase';
-import { RecusarOrcamentoUseCase } from '../../application/ordem-de-servico/recusar-orcamento/RecusarOrcamentoUseCase';
 import { RegistrarExecucaoUseCase } from '../../application/ordem-de-servico/registrar-execucao/RegistrarExecucaoUseCase';
 import { TempoMedioPorServicoUseCase } from '../../application/ordem-de-servico/tempo-medio-por-servico/TempoMedioPorServicoUseCase';
 import { OrdemDeServicoController } from './ordem-de-servico.controller';
@@ -17,9 +17,9 @@ import { OrdemDeServicoController } from './ordem-de-servico.controller';
     ConsultarOSUseCase,
     ListarOSUseCase,
     AvancarStatusUseCase,
-    AprovarOrcamentoUseCase,
-    RecusarOrcamentoUseCase,
     RegistrarExecucaoUseCase,
+    FinalizarExecucaoUseCase,
+    AdicionarItemUseCase,
     TempoMedioPorServicoUseCase,
   ],
 })
