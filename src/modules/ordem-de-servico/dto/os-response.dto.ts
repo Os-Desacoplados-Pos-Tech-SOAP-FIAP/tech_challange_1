@@ -15,12 +15,12 @@ export class OSItemResponseDto {
 
 export class OSExecucaoResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty() itemOrcamentoId!: string;
   @ApiProperty() servicoId!: string;
   @ApiProperty() mecanicoId!: string;
   @ApiProperty() inicio!: Date;
   @ApiProperty({ required: false }) fim?: Date;
   @ApiProperty({ required: false }) tempoExecucaoMinutos?: number;
-  @ApiProperty({ required: false }) observacoes?: string;
 }
 
 export class OSResponseDto {
@@ -56,12 +56,12 @@ export class OSResponseDto {
       })),
       execucoes: os.execucoes.map((e) => ({
         id: e.id.toValue(),
+        itemOrcamentoId: e.itemOrcamentoId.toValue(),
         servicoId: e.servicoId.toValue(),
         mecanicoId: e.mecanicoId.toValue(),
         inicio: e.inicio,
         fim: e.fim,
         tempoExecucaoMinutos: e.tempoExecucaoMinutos,
-        observacoes: e.observacoes,
       })),
       criadoEm: os.criadoEm,
       atualizadoEm: os.atualizadoEm,

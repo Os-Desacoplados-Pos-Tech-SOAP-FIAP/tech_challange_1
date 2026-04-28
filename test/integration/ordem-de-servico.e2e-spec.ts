@@ -37,7 +37,7 @@ describe('OrdemDeServico (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         tipo: 'PF',
-        cpfCnpj: '52998224725',
+        documento: '52998224725',
         nome: 'Cliente E2E',
         email: 'cliente@e2e.local',
       });
@@ -74,7 +74,7 @@ describe('OrdemDeServico (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         tipo: 'PF',
-        cpfCnpj: '11111111111',
+        documento: '11111111111',
         nome: 'Invalido',
         email: 'invalido@teste.local',
       });

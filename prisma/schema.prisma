@@ -18,10 +18,11 @@ enum StatusOS {
   RECEBIDA
   EM_DIAGNOSTICO
   AGUARDANDO_APROVACAO
+  APROVADA
+  REPROVADA
   EM_EXECUCAO
   FINALIZADA
   ENTREGUE
-  CANCELADA
 }
 
 enum TipoCliente {
@@ -29,14 +30,14 @@ enum TipoCliente {
   PJ
 }
 
-enum TipoPecaInsumo {
+enum TipoInsumo {
   PECA
   INSUMO
 }
 
 enum TipoItemOrcamento {
   SERVICO
-  PECA
+  INSUMO
 }
 
 model Usuario {
@@ -48,14 +49,12 @@ model Usuario {
   ativo     Boolean      @default(true)
   criadoEm  DateTime     @default(now())
   atualizadoEm DateTime  @updatedAt
-
-  execucoes ExecucaoDeServico[] @relation("ExecucaoMecanico")
 }
 
 model Cliente {
   id        String      @id @default(uuid())
   tipo      TipoCliente
-  cpfCnpj   String      @unique
+  documento String      @unique
   nome      String
   email     String
   telefone  String?
@@ -90,18 +89,17 @@ model Servico {
   atualizadoEm DateTime @updatedAt
 }
 
-model PecaInsumo {
-  id                String         @id @default(uuid())
-  codigo            String         @unique
-  nome              String
-  tipo              TipoPecaInsumo
-  valorUnitario     Decimal        @db.Decimal(10, 2)
-  quantidadeEstoque Int
-  estoqueMinimo     Int
-  criadoEm          DateTime       @default(now())
-  atualizadoEm      DateTime       @updatedAt
-
-  pecasUtilizadas PecaUtilizada[]
+model Insumo {
+  id                 String      @id @default(uuid())
+  codigo             String      @unique
+  nome               String
+  tipo               TipoInsumo
+  valorUnitario      Decimal     @db.Decimal(10, 2)
+  quantidadeEstoque  Int
+  quantidadeReservada Int        @default(0)
+  estoqueMinimo      Int
+  criadoEm           DateTime    @default(now())
+  atualizadoEm       DateTime    @updatedAt
 }
 
 model OrdemDeServico {
@@ -132,32 +130,30 @@ model ItemOrcamento {
   valorTotal      Decimal           @db.Decimal(10, 2)
   criadoEm        DateTime          @default(now())
 
-  ordemDeServico OrdemDeServico @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  ordemDeServico OrdemDeServico     @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  execucao       ExecucaoDeServico?
 }
 
 model ExecucaoDeServico {
   id                   String   @id @default(uuid())
   ordemDeServicoId     String
+  itemOrcamentoId      String   @unique
   servicoId            String
   mecanicoId           String
   inicio               DateTime
   fim                  DateTime?
   tempoExecucaoMinutos Int?
-  observacoes          String?
   criadoEm             DateTime @default(now())
 
-  ordemDeServico  OrdemDeServico  @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
-  mecanico        Usuario         @relation("ExecucaoMecanico", fields: [mecanicoId], references: [id])
-  pecasUtilizadas PecaUtilizada[]
+  ordemDeServico OrdemDeServico @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  itemOrcamento  ItemOrcamento  @relation(fields: [itemOrcamentoId], references: [id], onDelete: Cascade)
 }
 
-model PecaUtilizada {
-  id                  String   @id @default(uuid())
-  execucaoDeServicoId String
-  pecaInsumoId        String
-  quantidade          Int
-  criadoEm            DateTime @default(now())
-
-  execucao ExecucaoDeServico @relation(fields: [execucaoDeServicoId], references: [id], onDelete: Cascade)
-  peca     PecaInsumo        @relation(fields: [pecaInsumoId], references: [id])
+model OrcamentoToken {
+  id               String   @id @default(uuid())
+  ordemDeServicoId String
+  token            String   @unique
+  usado            Boolean  @default(false)
+  criadoEm         DateTime @default(now())
+  usadoEm          DateTime?
 }

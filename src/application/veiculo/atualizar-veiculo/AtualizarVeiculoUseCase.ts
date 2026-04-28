@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 import { Veiculo } from '../../../domain/veiculo/entities/Veiculo';
 import { IVeiculoRepository } from '../../../domain/veiculo/repositories/IVeiculoRepository';
@@ -21,8 +22,10 @@ export class AtualizarVeiculoUseCase {
   ) {}
 
   async execute(input: AtualizarVeiculoInput): Promise<Veiculo> {
-    const veiculo = await this.veiculoRepository.buscarPorId(new UniqueID(input.id));
-    if (!veiculo) throw new NotFoundException('Veículo não encontrado');
+    const veiculo = ensureFound(
+      await this.veiculoRepository.buscarPorId(new UniqueID(input.id)),
+      'Veículo',
+    );
     veiculo.atualizar(input);
     await this.veiculoRepository.salvar(veiculo);
     return veiculo;

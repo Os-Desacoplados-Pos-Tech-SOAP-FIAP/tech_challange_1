@@ -9,10 +9,14 @@ import { Marca } from '../../domain/veiculo/value-objects/Marca';
 import { Modelo } from '../../domain/veiculo/value-objects/Modelo';
 import { Placa } from '../../domain/veiculo/value-objects/Placa';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { EventDispatcher } from '../events/EventDispatcher';
 
 @Injectable()
 export class PrismaVeiculoRepository implements IVeiculoRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventDispatcher: EventDispatcher,
+  ) {}
 
   private toDomain(row: PrismaVeiculo): Veiculo {
     return Veiculo.restaurar(
@@ -42,6 +46,7 @@ export class PrismaVeiculoRepository implements IVeiculoRepository {
       create: { id: veiculo.id.toValue(), ...data },
       update: data,
     });
+    await this.eventDispatcher.publish(veiculo.pullEvents());
   }
 
   async buscarPorId(id: UniqueID): Promise<Veiculo | null> {
@@ -68,7 +73,4 @@ export class PrismaVeiculoRepository implements IVeiculoRepository {
     return rows.map((r) => this.toDomain(r));
   }
 
-  async remover(id: UniqueID): Promise<void> {
-    await this.prisma.veiculo.delete({ where: { id: id.toValue() } });
-  }
 }

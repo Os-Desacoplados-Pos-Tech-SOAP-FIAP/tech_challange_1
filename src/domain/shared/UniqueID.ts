@@ -1,4 +1,5 @@
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { DomainError } from './DomainError';
 
 export class UniqueID {
   private readonly value: string;
@@ -6,7 +7,7 @@ export class UniqueID {
   constructor(value?: string) {
     const id = value ?? uuidv4();
     if (!uuidValidate(id)) {
-      throw new Error(`UniqueID inválido: ${id}`);
+      throw new DomainError(`ID inválido: "${id}"`, 'INVALID_ID');
     }
     this.value = id;
   }

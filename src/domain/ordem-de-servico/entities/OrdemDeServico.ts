@@ -14,7 +14,7 @@ import { NumeroOS } from '../value-objects/NumeroOS';
 import { StatusOS, StatusOSEnum } from '../value-objects/StatusOS';
 import { ValorEstimado } from '../value-objects/ValorEstimado';
 import { ExecucaoDeServico } from './ExecucaoDeServico';
-import { ItemOrcamento, NovoItemOrcamentoInput } from './ItemOrcamento';
+import { ItemOrcamento, NovoItemOrcamentoInput, TipoItemOrcamento } from './ItemOrcamento';
 
 export interface OrdemDeServicoProps extends EntityProps {
   numero: NumeroOS;
@@ -41,11 +41,12 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
 
   public static criar(input: NovaOSInput): OrdemDeServico {
     const itens = (input.itensIniciais ?? []).map((i) => ItemOrcamento.criar(i));
+    const status = itens.length > 0 ? StatusOS.create(StatusOSEnum.EM_DIAGNOSTICO) : StatusOS.inicial();
     const os = new OrdemDeServico({
       numero: NumeroOS.create(input.numero),
       clienteId: new UniqueID(input.clienteId),
       veiculoId: new UniqueID(input.veiculoId),
-      status: StatusOS.inicial(),
+      status,
       itensOrcamento: itens,
       execucoes: [],
       observacoes: input.observacoes?.trim(),
@@ -99,6 +100,9 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
       );
     }
     this.props.itensOrcamento.push(ItemOrcamento.criar(input));
+    if (this.props.status.value === StatusOSEnum.RECEBIDA) {
+      this.props.status = this.props.status.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
+    }
     this.touch();
   }
 
@@ -117,6 +121,28 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
     }
   }
 
+  public avancarStatus(): void {
+    const status = this.props.status.value;
+    if (status === StatusOSEnum.EM_DIAGNOSTICO) {
+      if (this.props.itensOrcamento.length === 0) {
+        throw new DomainError(
+          'Adicione pelo menos um item ao orçamento antes de avançar',
+          'OS_SEM_ITEM_PARA_AVANCAR',
+        );
+      }
+      this.transicionarPara(StatusOSEnum.AGUARDANDO_APROVACAO);
+      return;
+    }
+    if (status === StatusOSEnum.FINALIZADA) {
+      this.transicionarPara(StatusOSEnum.ENTREGUE);
+      return;
+    }
+    throw new DomainError(
+      `Não há avanço manual disponível a partir do status ${status}`,
+      'OS_SEM_AVANCO_DISPONIVEL',
+    );
+  }
+
   public aprovarOrcamento(): void {
     if (this.props.status.value !== StatusOSEnum.AGUARDANDO_APROVACAO) {
       throw new DomainError(
@@ -124,35 +150,87 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
         'APROVACAO_FASE_INVALIDA',
       );
     }
-    this.transicionarPara(StatusOSEnum.EM_EXECUCAO);
+    this.props.status = this.props.status.transicionar(StatusOSEnum.APROVADA);
+    this.touch();
     this.addDomainEvent(new OrcamentoAprovado(this.id));
   }
 
-  public recusarOrcamento(motivo: 'TOTAL' | 'PARCIAL'): void {
+  public recusarOrcamento(motivo: 'TOTAL' = 'TOTAL'): void {
     if (this.props.status.value !== StatusOSEnum.AGUARDANDO_APROVACAO) {
       throw new DomainError(
         'Só é possível recusar orçamento no status AGUARDANDO_APROVACAO',
         'RECUSA_FASE_INVALIDA',
       );
     }
-    if (motivo === 'TOTAL') {
-      this.transicionarPara(StatusOSEnum.CANCELADA);
-    } else {
-      this.props.status = this.props.status.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
-      this.touch();
-    }
+    this.props.status = this.props.status.transicionar(StatusOSEnum.REPROVADA);
+    this.touch();
     this.addDomainEvent(new OrcamentoRecusado(this.id, motivo));
   }
 
-  public registrarExecucao(execucao: ExecucaoDeServico): void {
-    if (this.props.status.value !== StatusOSEnum.EM_EXECUCAO) {
+  public registrarPontoExecucao(itemOrcamentoId: string, mecanicoId: string): void {
+    const item = this.props.itensOrcamento.find((i) => i.id.toValue() === itemOrcamentoId);
+    if (!item) {
+      throw new DomainError('Item de orçamento não encontrado nesta OS', 'ITEM_NAO_ENCONTRADO');
+    }
+    if (item.tipo !== TipoItemOrcamento.SERVICO) {
       throw new DomainError(
-        'Só é possível registrar execução com OS em execução',
-        'EXECUCAO_FASE_INVALIDA',
+        'Apenas itens do tipo SERVICO podem ser executados',
+        'EXECUCAO_TIPO_INVALIDO',
       );
     }
-    this.props.execucoes.push(execucao);
+
+    const execucao = this.props.execucoes.find(
+      (e) => e.itemOrcamentoId.toValue() === itemOrcamentoId,
+    );
+
+    if (!execucao) {
+      const status = this.props.status.value;
+      if (status !== StatusOSEnum.APROVADA && status !== StatusOSEnum.EM_EXECUCAO) {
+        throw new DomainError(
+          'OS precisa estar APROVADA ou em execução para iniciar um item',
+          'EXECUCAO_FASE_INVALIDA',
+        );
+      }
+      const nova = ExecucaoDeServico.criar({
+        itemOrcamentoId,
+        servicoId: item.referenciaId.toValue(),
+        mecanicoId,
+        inicio: new Date(),
+      });
+      this.props.execucoes.push(nova);
+      this.addDomainEvent(new ServicoExecutado(this.id, nova.id));
+      if (status === StatusOSEnum.APROVADA) {
+        this.props.status = this.props.status.transicionar(StatusOSEnum.EM_EXECUCAO);
+      }
+      this.touch();
+      return;
+    }
+
+    if (execucao.fim) {
+      throw new DomainError('Execução já finalizada', 'EXECUCAO_JA_FINALIZADA');
+    }
+
+    execucao.finalizar(new Date());
     this.touch();
-    this.addDomainEvent(new ServicoExecutado(this.id, execucao.id));
+    if (this.todasExecucoesFinalizadasParaItensServico) {
+      this.transicionarPara(StatusOSEnum.FINALIZADA);
+    }
+  }
+
+  public get todasExecucoesFinalizadas(): boolean {
+    return this.props.execucoes.length > 0 && this.props.execucoes.every((e) => !e.emAndamento);
+  }
+
+  private get todasExecucoesFinalizadasParaItensServico(): boolean {
+    const itensServico = this.props.itensOrcamento.filter(
+      (i) => i.tipo === TipoItemOrcamento.SERVICO,
+    );
+    if (itensServico.length === 0) return false;
+    return itensServico.every((item) => {
+      const exec = this.props.execucoes.find(
+        (e) => e.itemOrcamentoId.toValue() === item.id.toValue(),
+      );
+      return exec !== undefined && exec.fim !== undefined;
+    });
   }
 }

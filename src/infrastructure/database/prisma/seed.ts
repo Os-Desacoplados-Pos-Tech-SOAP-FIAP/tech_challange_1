@@ -3,8 +3,8 @@ import {
    PrismaClient,
    StatusOS,
    TipoCliente,
+   TipoInsumo,
    TipoItemOrcamento,
-   TipoPecaInsumo,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -12,19 +12,86 @@ const prisma = new PrismaClient();
 
 const SEED_MARKER = '[SEED]';
 
+// IDs fixos — garantem que o documento de referência nunca fique desatualizado após um reset
+const ID = {
+   usuario: {
+      admin:     '00000000-0000-0000-0000-000000000001',
+      atendente: '00000000-0000-0000-0000-000000000002',
+      mecanico1: '00000000-0000-0000-0000-000000000003',
+      mecanico2: '00000000-0000-0000-0000-000000000004',
+   },
+   cliente: {
+      ana:      '00000000-0000-0000-0001-000000000001',
+      carlos:   '00000000-0000-0000-0001-000000000002',
+      fernanda: '00000000-0000-0000-0001-000000000003',
+      joao:     '00000000-0000-0000-0001-000000000004',
+      maria:    '00000000-0000-0000-0001-000000000005',
+      acme:     '00000000-0000-0000-0001-000000000006',
+   },
+   veiculo: {
+      civic:    '00000000-0000-0000-0002-000000000001',
+      uno:      '00000000-0000-0000-0002-000000000002',
+      daily:    '00000000-0000-0000-0002-000000000003',
+      gol:      '00000000-0000-0000-0002-000000000004',
+      onix:     '00000000-0000-0000-0002-000000000005',
+      sprinter: '00000000-0000-0000-0002-000000000006',
+   },
+   servico: {
+      alinhamento:  '00000000-0000-0000-0003-000000000001',
+      balanceamento:'00000000-0000-0000-0003-000000000002',
+      limpezaBicos: '00000000-0000-0000-0003-000000000003',
+      revisaoGeral: '00000000-0000-0000-0003-000000000004',
+      pastilhas:    '00000000-0000-0000-0003-000000000005',
+      trocaOleo:    '00000000-0000-0000-0003-000000000006',
+   },
+   insumo: {
+      oleo5w30:   '00000000-0000-0000-0004-000000000001',
+      filtroOleo: '00000000-0000-0000-0004-000000000002',
+      pastilha:   '00000000-0000-0000-0004-000000000003',
+      correia:    '00000000-0000-0000-0004-000000000004',
+      pneu:       '00000000-0000-0000-0004-000000000005',
+      bateria:    '00000000-0000-0000-0004-000000000006',
+   },
+};
+
 async function main(): Promise<void> {
    console.log('Executando seed...');
 
-   const senhaAdminHash = await bcrypt.hash('admin123', 12);
-   const senhaPadraoHash = await bcrypt.hash('senha123', 12);
+   const SENHA_ADMIN = 'admin123';
+   const SENHA_PADRAO = 'senha123';
+   const hashSenha = (plain: string) => bcrypt.hash(plain, 12);
+   const digits = (value: string) => value.replace(/\D/g, '');
 
+   // --- Limpeza: remover serviços duplicados e de teste ---
+   const nomesParaManter = [
+      'Troca de óleo',
+      'Alinhamento',
+      'Balanceamento',
+      'Troca de pastilhas',
+      'Revisão geral',
+      'Limpeza de bicos',
+   ];
+   for (const nome of nomesParaManter) {
+      const todos = await prisma.servico.findMany({ where: { nome }, orderBy: { id: 'asc' } });
+      if (todos.length > 1) {
+         await prisma.servico.deleteMany({
+            where: { id: { in: todos.slice(1).map((s) => s.id) } },
+         });
+      }
+   }
+   await prisma.servico.deleteMany({
+      where: { nome: { notIn: nomesParaManter } },
+   });
+
+   // --- Usuários ---
    await prisma.usuario.upsert({
       where: { email: 'admin@oficina.local' },
       update: {},
       create: {
+         id: ID.usuario.admin,
          nome: 'Administrador',
          email: 'admin@oficina.local',
-         senha: senhaAdminHash,
+         senha: await hashSenha(SENHA_ADMIN),
          perfil: PerfilAcesso.ADMINISTRADOR,
       },
    });
@@ -33,9 +100,10 @@ async function main(): Promise<void> {
       where: { email: 'atendente@oficina.local' },
       update: {},
       create: {
+         id: ID.usuario.atendente,
          nome: 'Carla Atendente',
          email: 'atendente@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.ATENDENTE,
       },
    });
@@ -44,9 +112,10 @@ async function main(): Promise<void> {
       where: { email: 'mecanico1@oficina.local' },
       update: {},
       create: {
+         id: ID.usuario.mecanico1,
          nome: 'Pedro Mecânico',
          email: 'mecanico1@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.MECANICO,
       },
    });
@@ -55,101 +124,99 @@ async function main(): Promise<void> {
       where: { email: 'mecanico2@oficina.local' },
       update: {},
       create: {
+         id: ID.usuario.mecanico2,
          nome: 'Rafael Mecânico',
          email: 'mecanico2@oficina.local',
-         senha: senhaPadraoHash,
+         senha: await hashSenha(SENHA_PADRAO),
          perfil: PerfilAcesso.MECANICO,
       },
    });
 
-   const joao = await prisma.cliente.upsert({
-      where: { cpfCnpj: '587.603.570-02' },
+   // --- Clientes (6) ---
+   const ana = await prisma.cliente.upsert({
+      where: { documento: digits('329.567.570-83') },
       update: {},
       create: {
+         id: ID.cliente.ana,
          tipo: TipoCliente.PF,
-         cpfCnpj: '587.603.570-02',
+         documento: digits('329.567.570-83'),
+         nome: 'Ana Lima',
+         email: 'ana@email.com',
+         telefone: digits('(31) 97777-0000'),
+      },
+   });
+
+   const carlos = await prisma.cliente.upsert({
+      where: { documento: digits('038.447.920-61') },
+      update: {},
+      create: {
+         id: ID.cliente.carlos,
+         tipo: TipoCliente.PF,
+         documento: digits('038.447.920-61'),
+         nome: 'Carlos Ferreira',
+         email: 'carlos.ferreira@gmail.com',
+         telefone: digits('(21) 97654-3210'),
+      },
+   });
+
+   const fernanda = await prisma.cliente.upsert({
+      where: { documento: digits('467.749.620-09') },
+      update: {},
+      create: {
+         id: ID.cliente.fernanda,
+         tipo: TipoCliente.PF,
+         documento: digits('467.749.620-09'),
+         nome: 'Fernanda Souza Ribeiro',
+         email: 'fernanda.ribeiro@gmail.com',
+         telefone: digits('(11) 98234-5671'),
+      },
+   });
+
+   const joao = await prisma.cliente.upsert({
+      where: { documento: digits('587.603.570-02') },
+      update: {},
+      create: {
+         id: ID.cliente.joao,
+         tipo: TipoCliente.PF,
+         documento: digits('587.603.570-02'),
          nome: 'João Silva',
          email: 'joao@email.com',
-         telefone: '(31) 99999-0000',
+         telefone: digits('(31) 99999-0000'),
       },
    });
 
    const maria = await prisma.cliente.upsert({
-      where: { cpfCnpj: '370.252.660-94' },
+      where: { documento: digits('370.252.660-94') },
       update: {},
       create: {
+         id: ID.cliente.maria,
          tipo: TipoCliente.PF,
-         cpfCnpj: '370.252.660-94',
+         documento: digits('370.252.660-94'),
          nome: 'Maria Souza',
          email: 'maria@email.com',
-         telefone: '(31) 98888-0000',
-      },
-   });
-
-   const ana = await prisma.cliente.upsert({
-      where: { cpfCnpj: '329.567.570-83' },
-      update: {},
-      create: {
-         tipo: TipoCliente.PF,
-         cpfCnpj: '329.567.570-83',
-         nome: 'Ana Lima',
-         email: 'ana@email.com',
-         telefone: '(31) 97777-0000',
+         telefone: digits('(31) 98888-0000'),
       },
    });
 
    const acme = await prisma.cliente.upsert({
-      where: { cpfCnpj: '46.483.933/0001-88' },
+      where: { documento: digits('46.483.933/0001-88') },
       update: {},
       create: {
+         id: ID.cliente.acme,
          tipo: TipoCliente.PJ,
-         cpfCnpj: '46.483.933/0001-88',
+         documento: digits('46.483.933/0001-88'),
          nome: 'Transportadora ACME LTDA',
          email: 'contato@acme.com.br',
-         telefone: '(31) 3333-4444',
+         telefone: digits('(31) 3333-4444'),
       },
    });
 
-   const veiculoJoaoGol = await prisma.veiculo.upsert({
-      where: { placa: 'ABC1D23' },
-      update: {},
-      create: {
-         placa: 'ABC1D23',
-         marca: 'Volkswagen',
-         modelo: 'Gol',
-         ano: 2022,
-         clienteId: joao.id,
-      },
-   });
-
-   const veiculoJoaoUno = await prisma.veiculo.upsert({
-      where: { placa: 'ABC2D34' },
-      update: {},
-      create: {
-         placa: 'ABC2D34',
-         marca: 'Fiat',
-         modelo: 'Uno',
-         ano: 2019,
-         clienteId: joao.id,
-      },
-   });
-
-   const veiculoMaria = await prisma.veiculo.upsert({
-      where: { placa: 'DEF3G45' },
-      update: {},
-      create: {
-         placa: 'DEF3G45',
-         marca: 'Chevrolet',
-         modelo: 'Onix',
-         ano: 2021,
-         clienteId: maria.id,
-      },
-   });
-
+   // --- Veículos (6 — um por cliente) ---
    const veiculoAna = await prisma.veiculo.upsert({
       where: { placa: 'LIM4H56' },
       update: {},
       create: {
+         id: ID.veiculo.civic,
          placa: 'LIM4H56',
          marca: 'Honda',
          modelo: 'Civic',
@@ -158,10 +225,63 @@ async function main(): Promise<void> {
       },
    });
 
-   const veiculoAcmeSprinter = await prisma.veiculo.upsert({
+   const veiculoCarlos = await prisma.veiculo.upsert({
+      where: { placa: 'ABC2D34' },
+      update: { clienteId: carlos.id },
+      create: {
+         id: ID.veiculo.uno,
+         placa: 'ABC2D34',
+         marca: 'Fiat',
+         modelo: 'Uno',
+         ano: 2019,
+         clienteId: carlos.id,
+      },
+   });
+
+   const veiculoFernanda = await prisma.veiculo.upsert({
+      where: { placa: 'ACM2A02' },
+      update: { clienteId: fernanda.id },
+      create: {
+         id: ID.veiculo.daily,
+         placa: 'ACM2A02',
+         marca: 'Iveco',
+         modelo: 'Daily',
+         ano: 2018,
+         clienteId: fernanda.id,
+      },
+   });
+
+   const veiculoJoao = await prisma.veiculo.upsert({
+      where: { placa: 'ABC1D23' },
+      update: {},
+      create: {
+         id: ID.veiculo.gol,
+         placa: 'ABC1D23',
+         marca: 'Volkswagen',
+         modelo: 'Gol',
+         ano: 2022,
+         clienteId: joao.id,
+      },
+   });
+
+   const veiculoMaria = await prisma.veiculo.upsert({
+      where: { placa: 'DEF3G45' },
+      update: {},
+      create: {
+         id: ID.veiculo.onix,
+         placa: 'DEF3G45',
+         marca: 'Chevrolet',
+         modelo: 'Onix',
+         ano: 2021,
+         clienteId: maria.id,
+      },
+   });
+
+   const veiculoAcme = await prisma.veiculo.upsert({
       where: { placa: 'ACM1A01' },
       update: {},
       create: {
+         id: ID.veiculo.sprinter,
          placa: 'ACM1A01',
          marca: 'Mercedes-Benz',
          modelo: 'Sprinter',
@@ -170,158 +290,178 @@ async function main(): Promise<void> {
       },
    });
 
-   const veiculoAcmeDaily = await prisma.veiculo.upsert({
-      where: { placa: 'ACM2A02' },
-      update: {},
-      create: {
-         placa: 'ACM2A02',
-         marca: 'Iveco',
-         modelo: 'Daily',
-         ano: 2018,
-         clienteId: acme.id,
-      },
-   });
-
-   const ensureServico = async (nome: string, descricao: string, valorPadrao: number) => {
+   // --- Serviços (6) ---
+   const ensureServico = async (id: string, nome: string, descricao: string, valorPadrao: number) => {
       const existing = await prisma.servico.findFirst({ where: { nome } });
       if (existing) return existing;
-      return prisma.servico.create({ data: { nome, descricao, valorPadrao } });
+      return prisma.servico.create({ data: { id, nome, descricao, valorPadrao } });
    };
 
-   const servicoOleo = await ensureServico(
-      'Troca de óleo',
-      'Troca completa de óleo do motor e filtro',
-      120.5,
-   );
    const servicoAlinhamento = await ensureServico(
+      ID.servico.alinhamento,
       'Alinhamento',
-      'Alinhamento da direção',
+      'Alinhamento da direção dianteira e traseira',
       90,
    );
    const servicoBalanceamento = await ensureServico(
+      ID.servico.balanceamento,
       'Balanceamento',
       'Balanceamento das quatro rodas',
       80,
    );
+   await ensureServico(
+      ID.servico.limpezaBicos,
+      'Limpeza de bicos',
+      'Limpeza e teste ultrassônico dos injetores de combustível',
+      160,
+   );
+   const servicoRevisao = await ensureServico(
+      ID.servico.revisaoGeral,
+      'Revisão geral',
+      'Revisão completa do veículo com checagem de todos os sistemas',
+      600,
+   );
    const servicoPastilhas = await ensureServico(
+      ID.servico.pastilhas,
       'Troca de pastilhas',
       'Troca das pastilhas de freio dianteiras',
       250,
    );
-   const servicoRevisao = await ensureServico(
-      'Revisão geral',
-      'Revisão completa do veículo',
-      600,
+   const servicoOleo = await ensureServico(
+      ID.servico.trocaOleo,
+      'Troca de óleo',
+      'Troca completa de óleo do motor e filtro',
+      120.5,
    );
 
-   const filtroOleo = await prisma.pecaInsumo.upsert({
-      where: { codigo: 'PEC-001' },
-      update: {},
-      create: {
-         codigo: 'PEC-001',
-         nome: 'Filtro de óleo',
-         tipo: TipoPecaInsumo.PECA,
-         valorUnitario: 35.9,
-         quantidadeEstoque: 50,
-         estoqueMinimo: 5,
-      },
-   });
-
-   const oleoMotor = await prisma.pecaInsumo.upsert({
+   // --- Insumos (6) ---
+   const oleoMotor = await prisma.insumo.upsert({
       where: { codigo: 'INS-001' },
       update: {},
       create: {
+         id: ID.insumo.oleo5w30,
          codigo: 'INS-001',
          nome: 'Óleo 5W30 1L',
-         tipo: TipoPecaInsumo.INSUMO,
+         tipo: TipoInsumo.INSUMO,
          valorUnitario: 45,
          quantidadeEstoque: 100,
          estoqueMinimo: 10,
       },
    });
 
-   const pastilhaFreio = await prisma.pecaInsumo.upsert({
+   const filtroOleo = await prisma.insumo.upsert({
+      where: { codigo: 'PEC-001' },
+      update: {},
+      create: {
+         id: ID.insumo.filtroOleo,
+         codigo: 'PEC-001',
+         nome: 'Filtro de óleo',
+         tipo: TipoInsumo.PECA,
+         valorUnitario: 35.9,
+         quantidadeEstoque: 50,
+         estoqueMinimo: 5,
+      },
+   });
+
+   const pastilhaFreio = await prisma.insumo.upsert({
       where: { codigo: 'PEC-002' },
       update: {},
       create: {
+         id: ID.insumo.pastilha,
          codigo: 'PEC-002',
          nome: 'Pastilha de freio dianteira',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 180,
          quantidadeEstoque: 30,
          estoqueMinimo: 4,
       },
    });
 
-   const correia = await prisma.pecaInsumo.upsert({
+   const correia = await prisma.insumo.upsert({
       where: { codigo: 'PEC-003' },
       update: {},
       create: {
+         id: ID.insumo.correia,
          codigo: 'PEC-003',
          nome: 'Correia dentada',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 220,
          quantidadeEstoque: 15,
          estoqueMinimo: 3,
       },
    });
 
-   const pneu = await prisma.pecaInsumo.upsert({
+   const pneu = await prisma.insumo.upsert({
       where: { codigo: 'PEC-004' },
       update: {},
       create: {
+         id: ID.insumo.pneu,
          codigo: 'PEC-004',
          nome: 'Pneu aro 15',
-         tipo: TipoPecaInsumo.PECA,
+         tipo: TipoInsumo.PECA,
          valorUnitario: 420,
          quantidadeEstoque: 20,
          estoqueMinimo: 4,
       },
    });
 
+   await prisma.insumo.upsert({
+      where: { codigo: 'PEC-005' },
+      update: {},
+      create: {
+         id: ID.insumo.bateria,
+         codigo: 'PEC-005',
+         nome: 'Bateria de 60Ah',
+         tipo: TipoInsumo.PECA,
+         valorUnitario: 650.75,
+         quantidadeEstoque: 12,
+         estoqueMinimo: 3,
+      },
+   });
+
+   // --- Ordens de Serviço ---
    const osJaSemeada = await prisma.ordemDeServico.findFirst({
       where: { observacoes: { contains: SEED_MARKER } },
    });
    if (osJaSemeada) {
       console.log('Ordens de serviço de seed já existem, pulando criação de OS.');
-      console.log('Seed concluído.');
+      console.log('Seed concluído. Usuários: 4. Clientes: 6. Veículos: 6. Serviços: 6. Insumos: 6.');
       return;
    }
 
    const agora = new Date();
    const horasAtras = (h: number) => new Date(agora.getTime() - h * 60 * 60 * 1000);
 
-   // 1. RECEBIDA — ACME/Sprinter: veículo acabou de chegar, ainda sem avaliação
+   // 1. RECEBIDA — ACME/Sprinter
    await prisma.ordemDeServico.create({
       data: {
          clienteId: acme.id,
-         veiculoId: veiculoAcmeSprinter.id,
+         veiculoId: veiculoAcme.id,
          status: StatusOS.RECEBIDA,
          valorEstimado: 0,
          observacoes: `${SEED_MARKER} Veículo recém-chegado, aguardando avaliação inicial`,
       },
    });
 
-   // 2. EM_DIAGNOSTICO — João/Gol: mecânico avaliando ruído na suspensão
+   // 2. EM_DIAGNOSTICO — João/Gol
    await prisma.ordemDeServico.create({
       data: {
          clienteId: joao.id,
-         veiculoId: veiculoJoaoGol.id,
+         veiculoId: veiculoJoao.id,
          status: StatusOS.EM_DIAGNOSTICO,
          valorEstimado: 0,
          observacoes: `${SEED_MARKER} Cliente relatou ruído na suspensão dianteira, em investigação`,
       },
    });
 
-   // 3. AGUARDANDO_APROVACAO — João/Uno: orçamento montado aguardando cliente
-   //    (mesmo cliente do item 2, veículo diferente → cenário "cliente com mais de uma OS aberta")
+   // 3. AGUARDANDO_APROVACAO — Carlos/Uno
    await prisma.ordemDeServico.create({
       data: {
-         clienteId: joao.id,
-         veiculoId: veiculoJoaoUno.id,
+         clienteId: carlos.id,
+         veiculoId: veiculoCarlos.id,
          status: StatusOS.AGUARDANDO_APROVACAO,
-         valorEstimado: 430.5,
-         observacoes: `${SEED_MARKER} Orçamento enviado ao cliente via whatsapp`,
+         valorEstimado: 430.4,
+         observacoes: `${SEED_MARKER} Orçamento enviado ao cliente, aguardando aprovação`,
          itensOrcamento: {
             create: [
                {
@@ -333,15 +473,15 @@ async function main(): Promise<void> {
                   valorTotal: 120.5,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: filtroOleo.id,
                   descricao: 'Filtro de óleo',
                   quantidade: 1,
-                  valorUnitario: 35,
-                  valorTotal: 35,
+                  valorUnitario: 35.9,
+                  valorTotal: 35.9,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: oleoMotor.id,
                   descricao: 'Óleo 5W30',
                   quantidade: 4,
@@ -353,26 +493,27 @@ async function main(): Promise<void> {
                   referenciaId: servicoAlinhamento.id,
                   descricao: 'Alinhamento',
                   quantidade: 1,
-                  valorUnitario: 95,
-                  valorTotal: 95,
+                  valorUnitario: 90,
+                  valorTotal: 90,
                },
             ],
          },
       },
    });
 
-   // 4. EM_EXECUCAO — ACME/Daily: serviço em andamento, execução sem fim registrado
-   //    (mesmo cliente do item 1, veículo diferente → PJ com duas OS abertas simultâneas)
+   // 4. EM_EXECUCAO — Fernanda/Daily
+   const itemPastilhasId = '00000000-0000-0000-0005-000000000001';
    await prisma.ordemDeServico.create({
       data: {
-         clienteId: acme.id,
-         veiculoId: veiculoAcmeDaily.id,
+         clienteId: fernanda.id,
+         veiculoId: veiculoFernanda.id,
          status: StatusOS.EM_EXECUCAO,
          valorEstimado: 470,
          observacoes: `${SEED_MARKER} Troca de pastilhas aprovada, mecânico executando`,
          itensOrcamento: {
             create: [
                {
+                  id: itemPastilhasId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoPastilhas.id,
                   descricao: 'Troca de pastilhas',
@@ -381,7 +522,7 @@ async function main(): Promise<void> {
                   valorTotal: 250,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: pastilhaFreio.id,
                   descricao: 'Pastilha dianteira',
                   quantidade: 1,
@@ -393,39 +534,38 @@ async function main(): Promise<void> {
                   referenciaId: servicoBalanceamento.id,
                   descricao: 'Balanceamento',
                   quantidade: 1,
-                  valorUnitario: 40,
-                  valorTotal: 40,
+                  valorUnitario: 80,
+                  valorTotal: 80,
                },
             ],
          },
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemPastilhasId,
                   servicoId: servicoPastilhas.id,
                   mecanicoId: mecanico1.id,
                   inicio: horasAtras(2),
                   fim: null,
-                  observacoes: 'Iniciando troca de pastilhas',
-                  pecasUtilizadas: {
-                     create: [{ pecaInsumoId: pastilhaFreio.id, quantidade: 1 }],
-                  },
                },
             ],
          },
       },
    });
 
-   // 5. FINALIZADA — Maria/Onix: serviço concluído, aguardando retirada
+   // 5. FINALIZADA — Maria/Onix
+   const itemRevisaoId = '00000000-0000-0000-0005-000000000002';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: maria.id,
          veiculoId: veiculoMaria.id,
          status: StatusOS.FINALIZADA,
-         valorEstimado: 855,
+         valorEstimado: 855.9,
          observacoes: `${SEED_MARKER} Serviço concluído, aguardando cliente retirar`,
          itensOrcamento: {
             create: [
                {
+                  id: itemRevisaoId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoRevisao.id,
                   descricao: 'Revisão geral',
@@ -434,7 +574,7 @@ async function main(): Promise<void> {
                   valorTotal: 600,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: correia.id,
                   descricao: 'Correia dentada',
                   quantidade: 1,
@@ -442,48 +582,43 @@ async function main(): Promise<void> {
                   valorTotal: 220,
                },
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: filtroOleo.id,
                   descricao: 'Filtro de óleo',
                   quantidade: 1,
-                  valorUnitario: 35,
-                  valorTotal: 35,
+                  valorUnitario: 35.9,
+                  valorTotal: 35.9,
                },
             ],
          },
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemRevisaoId,
                   servicoId: servicoRevisao.id,
                   mecanicoId: mecanico2.id,
                   inicio: horasAtras(10),
                   fim: horasAtras(8),
                   tempoExecucaoMinutos: 120,
-                  observacoes: 'Revisão completa incluindo troca de correia',
-                  pecasUtilizadas: {
-                     create: [
-                        { pecaInsumoId: correia.id, quantidade: 1 },
-                        { pecaInsumoId: filtroOleo.id, quantidade: 1 },
-                     ],
-                  },
                },
             ],
          },
       },
    });
 
-   // 6. ENTREGUE — Ana/Civic: fluxo completo, cliente já retirou
+   // 6. ENTREGUE — Ana/Civic
+   const itemAlinhamentoId = '00000000-0000-0000-0005-000000000003';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: ana.id,
          veiculoId: veiculoAna.id,
          status: StatusOS.ENTREGUE,
-         valorEstimado: 1700,
+         valorEstimado: 1740,
          observacoes: `${SEED_MARKER} Cliente retirou o veículo, pagamento realizado`,
          itensOrcamento: {
             create: [
                {
-                  tipo: TipoItemOrcamento.PECA,
+                  tipo: TipoItemOrcamento.INSUMO,
                   referenciaId: pneu.id,
                   descricao: 'Pneu aro 15',
                   quantidade: 4,
@@ -491,39 +626,37 @@ async function main(): Promise<void> {
                   valorTotal: 1680,
                },
                {
+                  id: itemAlinhamentoId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoAlinhamento.id,
                   descricao: 'Alinhamento',
                   quantidade: 1,
-                  valorUnitario: 20,
-                  valorTotal: 20,
+                  valorUnitario: 90,
+                  valorTotal: 90,
                },
             ],
          },
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemAlinhamentoId,
                   servicoId: servicoAlinhamento.id,
                   mecanicoId: mecanico1.id,
                   inicio: horasAtras(48),
                   fim: horasAtras(45),
                   tempoExecucaoMinutos: 180,
-                  observacoes: 'Troca dos quatro pneus com alinhamento',
-                  pecasUtilizadas: {
-                     create: [{ pecaInsumoId: pneu.id, quantidade: 4 }],
-                  },
                },
             ],
          },
       },
    });
 
-   // 7. CANCELADA — Ana/Civic: cliente desistiu após orçamento
+   // 7. REPROVADA — Carlos/Uno
    await prisma.ordemDeServico.create({
       data: {
-         clienteId: ana.id,
-         veiculoId: veiculoAna.id,
-         status: StatusOS.CANCELADA,
+         clienteId: carlos.id,
+         veiculoId: veiculoCarlos.id,
+         status: StatusOS.REPROVADA,
          valorEstimado: 600,
          observacoes: `${SEED_MARKER} Cliente optou por realizar o serviço em outra oficina`,
          itensOrcamento: {
@@ -542,7 +675,7 @@ async function main(): Promise<void> {
    });
 
    console.log(
-      'Seed concluído. Usuários: admin/atendente/2 mecânicos. Clientes: 4. Veículos: 6. OS: 7 (uma em cada status).',
+      'Seed concluído. Usuários: 4. Clientes: 6. Veículos: 6. Serviços: 6. Insumos: 6. OS: 7 (uma em cada status).',
    );
 }
 

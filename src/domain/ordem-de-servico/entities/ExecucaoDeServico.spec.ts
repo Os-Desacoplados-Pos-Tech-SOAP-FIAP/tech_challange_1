@@ -4,6 +4,7 @@ import { ExecucaoDeServico } from './ExecucaoDeServico';
 
 describe('ExecucaoDeServico', () => {
   const base = {
+    itemOrcamentoId: new UniqueID().toValue(),
     servicoId: new UniqueID().toValue(),
     mecanicoId: new UniqueID().toValue(),
     inicio: new Date('2024-01-01T08:00:00'),
@@ -13,12 +14,14 @@ describe('ExecucaoDeServico', () => {
   it('cria execução válida', () => {
     const e = ExecucaoDeServico.criar(base);
     expect(e.servicoId).toBeDefined();
+    expect(e.itemOrcamentoId.toValue()).toBe(base.itemOrcamentoId);
     expect(e.tempoExecucaoMinutos).toBe(120);
   });
 
-  it('cria execução sem fim', () => {
+  it('cria execução sem fim (em andamento)', () => {
     const e = ExecucaoDeServico.criar({ ...base, fim: undefined });
     expect(e.fim).toBeUndefined();
+    expect(e.emAndamento).toBe(true);
     expect(e.tempoExecucaoMinutos).toBeUndefined();
   });
 
@@ -31,16 +34,15 @@ describe('ExecucaoDeServico', () => {
     ).toThrow(DomainError);
   });
 
-  it('cria execução com peças utilizadas', () => {
-    const e = ExecucaoDeServico.criar({
-      ...base,
-      pecasUtilizadas: [{ pecaInsumoId: new UniqueID().toValue(), quantidade: 2 }],
-    });
-    expect(e.pecasUtilizadas).toHaveLength(1);
+  it('finaliza execução em andamento', () => {
+    const e = ExecucaoDeServico.criar({ ...base, fim: undefined });
+    e.finalizar(new Date('2024-01-01T09:00:00'));
+    expect(e.fim).toBeDefined();
+    expect(e.emAndamento).toBe(false);
   });
 
-  it('cria execução com observações (trim)', () => {
-    const e = ExecucaoDeServico.criar({ ...base, observacoes: '  obs  ' });
-    expect(e.observacoes).toBe('obs');
+  it('lança DomainError ao finalizar execução já finalizada', () => {
+    const e = ExecucaoDeServico.criar(base);
+    expect(() => e.finalizar(new Date('2024-01-01T11:00:00'))).toThrow(DomainError);
   });
 });

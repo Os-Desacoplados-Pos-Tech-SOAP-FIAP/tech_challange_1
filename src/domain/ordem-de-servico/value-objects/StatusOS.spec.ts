@@ -11,6 +11,7 @@ describe('StatusOS', () => {
     let s = StatusOS.inicial();
     s = s.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
     s = s.transicionar(StatusOSEnum.AGUARDANDO_APROVACAO);
+    s = s.transicionar(StatusOSEnum.APROVADA);
     s = s.transicionar(StatusOSEnum.EM_EXECUCAO);
     s = s.transicionar(StatusOSEnum.FINALIZADA);
     s = s.transicionar(StatusOSEnum.ENTREGUE);
@@ -30,8 +31,9 @@ describe('StatusOS', () => {
     expect(s.podeTransicionarPara(StatusOSEnum.EM_EXECUCAO)).toBe(false);
   });
 
-  it('CANCELADA é um estado terminal', () => {
-    const s = StatusOS.create(StatusOSEnum.CANCELADA);
-    expect(s.podeTransicionarPara(StatusOSEnum.RECEBIDA)).toBe(false);
+  it('REPROVADA é um estado terminal', () => {
+    const s = StatusOS.create(StatusOSEnum.REPROVADA);
+    expect(s.podeTransicionarPara(StatusOSEnum.APROVADA)).toBe(false);
+    expect(s.podeTransicionarPara(StatusOSEnum.EM_EXECUCAO)).toBe(false);
   });
 });

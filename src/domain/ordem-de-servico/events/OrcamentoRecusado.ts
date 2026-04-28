@@ -1,13 +1,12 @@
-import { DomainEvent } from '../../shared/DomainEvent';
+import { BaseDomainEvent } from '../../shared/DomainEvent';
+import { EVENTS } from '../../shared/events/EventNames';
 import { UniqueID } from '../../shared/UniqueID';
 
-export class OrcamentoRecusado implements DomainEvent {
-  public readonly ocorridoEm: Date;
-  public readonly eventName = 'OrcamentoRecusado';
+export class OrcamentoRecusado extends BaseDomainEvent {
   constructor(
-    public readonly aggregateId: UniqueID,
-    public readonly motivo: 'TOTAL' | 'PARCIAL',
+    aggregateId: UniqueID,
+    public readonly motivo: 'TOTAL',
   ) {
-    this.ocorridoEm = new Date();
+    super(aggregateId, EVENTS.OS_ORCAMENTO_RECUSADO, 'OrcamentoRecusado');
   }
 }

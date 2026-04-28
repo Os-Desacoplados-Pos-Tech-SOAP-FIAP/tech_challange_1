@@ -1,10 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { IClienteRepository } from '../../../domain/cliente/repositories/IClienteRepository';
-import { NovoItemOrcamentoInput } from '../../../domain/ordem-de-servico/entities/ItemOrcamento';
 import { OrdemDeServico } from '../../../domain/ordem-de-servico/entities/OrdemDeServico';
 import { IOrdemDeServicoRepository } from '../../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
+import { DomainError } from '../../../domain/shared/DomainError';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 import { IVeiculoRepository } from '../../../domain/veiculo/repositories/IVeiculoRepository';
 
@@ -12,7 +13,6 @@ export interface CriarOSInput {
   clienteId: string;
   veiculoId: string;
   observacoes?: string;
-  itensIniciais?: NovoItemOrcamentoInput[];
 }
 
 @Injectable()
@@ -27,11 +27,21 @@ export class CriarOSUseCase {
   ) {}
 
   async execute(input: CriarOSInput): Promise<OrdemDeServico> {
-    const cliente = await this.clienteRepository.buscarPorId(new UniqueID(input.clienteId));
-    if (!cliente) throw new NotFoundException('Cliente não encontrado');
+    ensureFound(
+      await this.clienteRepository.buscarPorId(new UniqueID(input.clienteId)),
+      'Cliente',
+    );
+    const veiculo = ensureFound(
+      await this.veiculoRepository.buscarPorId(new UniqueID(input.veiculoId)),
+      'Veículo',
+    );
 
-    const veiculo = await this.veiculoRepository.buscarPorId(new UniqueID(input.veiculoId));
-    if (!veiculo) throw new NotFoundException('Veículo não encontrado');
+    if (veiculo.clienteId.toValue() !== input.clienteId) {
+      throw new DomainError(
+        'Veículo informado não pertence ao cliente',
+        'VEICULO_NAO_PERTENCE_AO_CLIENTE',
+      );
+    }
 
     const numero = await this.osRepository.proximoNumero();
     const os = OrdemDeServico.criar({
@@ -39,7 +49,6 @@ export class CriarOSUseCase {
       clienteId: input.clienteId,
       veiculoId: input.veiculoId,
       observacoes: input.observacoes,
-      itensIniciais: input.itensIniciais,
     });
 
     await this.osRepository.salvar(os);

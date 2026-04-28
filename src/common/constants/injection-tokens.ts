@@ -3,6 +3,8 @@ export const INJECTION_TOKENS = {
   VEICULO_REPOSITORY: Symbol('IVeiculoRepository'),
   ORDEM_DE_SERVICO_REPOSITORY: Symbol('IOrdemDeServicoRepository'),
   SERVICO_REPOSITORY: Symbol('IServicoRepository'),
-  PECA_INSUMO_REPOSITORY: Symbol('IPecaInsumoRepository'),
+  INSUMO_REPOSITORY: Symbol('IInsumoRepository'),
+  ORCAMENTO_TOKEN_REPOSITORY: Symbol('IOrcamentoTokenRepository'),
   HASH_PROVIDER: Symbol('IHashProvider'),
+  EMAIL_PROVIDER: Symbol('IEmailProvider'),
 } as const;

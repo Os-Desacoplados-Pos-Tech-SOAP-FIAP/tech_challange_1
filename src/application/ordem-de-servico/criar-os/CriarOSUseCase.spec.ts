@@ -53,6 +53,9 @@ class InMemoryOSRepository implements IOrdemDeServicoRepository {
   async buscarPorNumero(numero: number): Promise<OrdemDeServico | null> {
     return this.oss.find((o) => o.numero.value === numero) ?? null;
   }
+  async buscarPorItemOrcamentoId(id: UniqueID): Promise<OrdemDeServico | null> {
+    return this.oss.find((o) => o.itensOrcamento.some((i) => i.id.equals(id))) ?? null;
+  }
   async listar(): Promise<OrdemDeServico[]> {
     return this.oss;
   }
@@ -76,7 +79,7 @@ describe('CriarOSUseCase', () => {
   beforeEach(() => {
     cliente = Cliente.criar({
       tipo: TipoCliente.PF,
-      cpfCnpj: '52998224725',
+      documento: '52998224725',
       nome: 'Cliente Teste',
       email: 'cliente@teste.com',
     });

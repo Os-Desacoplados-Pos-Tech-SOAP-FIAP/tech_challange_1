@@ -1,14 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { OrdemDeServico } from '../../../domain/ordem-de-servico/entities/OrdemDeServico';
 import { IOrdemDeServicoRepository } from '../../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
-import { StatusOSEnum } from '../../../domain/ordem-de-servico/value-objects/StatusOS';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 
 interface AvancarStatusInput {
   id: string;
-  novoStatus: StatusOSEnum;
 }
 
 @Injectable()
@@ -19,9 +18,8 @@ export class AvancarStatusUseCase {
   ) {}
 
   async execute(input: AvancarStatusInput): Promise<OrdemDeServico> {
-    const os = await this.osRepository.buscarPorId(new UniqueID(input.id));
-    if (!os) throw new NotFoundException('OS não encontrada');
-    os.transicionarPara(input.novoStatus);
+    const os = ensureFound(await this.osRepository.buscarPorId(new UniqueID(input.id)), 'OS');
+    os.avancarStatus();
     await this.osRepository.salvar(os);
     return os;
   }

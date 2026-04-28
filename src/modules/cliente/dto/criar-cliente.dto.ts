@@ -8,10 +8,13 @@ export class CriarClienteDto {
   @IsEnum(TipoCliente)
   tipo!: TipoCliente;
 
-  @ApiProperty({ example: '123.456.789-00' })
+  @ApiProperty({
+    example: '123.456.789-00',
+    description: 'Documento do cliente: CPF (PF) ou CNPJ (PJ). Pode conter máscara.',
+  })
   @IsString()
   @IsNotEmpty()
-  cpfCnpj!: string;
+  documento!: string;
 
   @ApiProperty({ example: 'João Silva' })
   @IsString()

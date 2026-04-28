@@ -4,7 +4,6 @@ import { AtualizarClienteUseCase } from '../../application/cliente/atualizar-cli
 import { BuscarClienteUseCase } from '../../application/cliente/buscar-cliente/BuscarClienteUseCase';
 import { CadastrarClienteUseCase } from '../../application/cliente/cadastrar-cliente/CadastrarClienteUseCase';
 import { ListarClientesUseCase } from '../../application/cliente/listar-clientes/ListarClientesUseCase';
-import { RemoverClienteUseCase } from '../../application/cliente/remover-cliente/RemoverClienteUseCase';
 import { ClienteController } from './cliente.controller';
 
 @Module({
@@ -14,7 +13,6 @@ import { ClienteController } from './cliente.controller';
     BuscarClienteUseCase,
     AtualizarClienteUseCase,
     ListarClientesUseCase,
-    RemoverClienteUseCase,
   ],
 })
 export class ClienteModule {}

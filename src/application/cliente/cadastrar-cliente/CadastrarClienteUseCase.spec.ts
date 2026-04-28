@@ -14,8 +14,8 @@ class InMemoryClienteRepository implements IClienteRepository {
   async buscarPorId(id: UniqueID): Promise<Cliente | null> {
     return this.clientes.find((c) => c.id.equals(id)) ?? null;
   }
-  async buscarPorDocumento(cpfCnpj: string): Promise<Cliente | null> {
-    return this.clientes.find((c) => c.cpfCnpj.value === cpfCnpj.replace(/\D/g, '')) ?? null;
+  async buscarPorDocumento(documento: string): Promise<Cliente | null> {
+    return this.clientes.find((c) => c.documento.value === documento.replace(/\D/g, '')) ?? null;
   }
   async listar(): Promise<Cliente[]> {
     return this.clientes;
@@ -37,7 +37,7 @@ describe('CadastrarClienteUseCase', () => {
   it('cadastra cliente PF válido', async () => {
     const cliente = await useCase.execute({
       tipo: TipoCliente.PF,
-      cpfCnpj: '529.982.247-25',
+      documento: '529.982.247-25',
       nome: 'João Silva',
       email: 'joao@email.com',
     });
@@ -48,14 +48,14 @@ describe('CadastrarClienteUseCase', () => {
   it('recusa documento duplicado', async () => {
     await useCase.execute({
       tipo: TipoCliente.PF,
-      cpfCnpj: '52998224725',
+      documento: '52998224725',
       nome: 'João Silva',
       email: 'joao@email.com',
     });
     await expect(
       useCase.execute({
         tipo: TipoCliente.PF,
-        cpfCnpj: '52998224725',
+        documento: '52998224725',
         nome: 'Outra Pessoa',
         email: 'outra@email.com',
       }),

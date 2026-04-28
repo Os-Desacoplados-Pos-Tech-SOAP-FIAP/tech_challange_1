@@ -9,7 +9,7 @@ class InMemoryClienteRepository implements IClienteRepository {
   public clientes: Cliente[] = [];
   async salvar(c: Cliente) { this.clientes.push(c); }
   async buscarPorId(id: UniqueID) { return this.clientes.find(c => c.id.equals(id)) ?? null; }
-  async buscarPorDocumento(doc: string) { return this.clientes.find(c => c.cpfCnpj.value === doc.replace(/\D/g, '')) ?? null; }
+  async buscarPorDocumento(doc: string) { return this.clientes.find(c => c.documento.value === doc.replace(/\D/g, '')) ?? null; }
   async listar() { return this.clientes; }
   async remover(id: UniqueID) { this.clientes = this.clientes.filter(c => !c.id.equals(id)); }
 }
@@ -22,7 +22,7 @@ describe('BuscarClienteUseCase', () => {
   beforeEach(() => {
     repo = new InMemoryClienteRepository();
     useCase = new BuscarClienteUseCase(repo);
-    cliente = Cliente.criar({ tipo: TipoCliente.PF, cpfCnpj: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
+    cliente = Cliente.criar({ tipo: TipoCliente.PF, documento: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
     repo.clientes.push(cliente);
   });
 

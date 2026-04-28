@@ -9,6 +9,7 @@ class InMemoryOSRepository implements IOrdemDeServicoRepository {
   async salvar(os: OrdemDeServico) { this.ordens.push(os); }
   async buscarPorId(id: UniqueID) { return this.ordens.find(o => o.id.equals(id)) ?? null; }
   async buscarPorNumero(n: number) { return this.ordens.find(o => o.numero.value === n) ?? null; }
+  async buscarPorItemOrcamentoId(id: UniqueID) { return this.ordens.find(o => o.itensOrcamento.some(i => i.id.equals(id))) ?? null; }
   async listar() { return this.ordens; }
   async proximoNumero() { return this.ordens.length + 1; }
   async tempoMedioExecucaoMinutos() { return this.tempoMedio; }

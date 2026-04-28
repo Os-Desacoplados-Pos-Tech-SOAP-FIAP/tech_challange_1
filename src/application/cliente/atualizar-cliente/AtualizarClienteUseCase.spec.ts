@@ -22,7 +22,7 @@ describe('AtualizarClienteUseCase', () => {
   beforeEach(() => {
     repo = new InMemoryClienteRepository();
     useCase = new AtualizarClienteUseCase(repo);
-    cliente = Cliente.criar({ tipo: TipoCliente.PF, cpfCnpj: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
+    cliente = Cliente.criar({ tipo: TipoCliente.PF, documento: '529.982.247-25', nome: 'João Silva', email: 'joao@email.com' });
     repo.clientes.push(cliente);
   });
 

@@ -13,7 +13,7 @@ export class CadastrarClienteUseCase {
 
   async execute(input: NovoClienteInput): Promise<Cliente> {
     const cliente = Cliente.criar(input);
-    const existente = await this.clienteRepository.buscarPorDocumento(cliente.cpfCnpj.value);
+    const existente = await this.clienteRepository.buscarPorDocumento(cliente.documento.value);
     if (existente) {
       throw new ConflictException('Já existe cliente cadastrado com este documento');
     }

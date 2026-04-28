@@ -3,7 +3,6 @@ import {
   ExecucaoDeServico as PrismaExecucao,
   ItemOrcamento as PrismaItemOrcamento,
   OrdemDeServico as PrismaOS,
-  PecaUtilizada as PrismaPecaUtilizada,
   StatusOS as PrismaStatusOS,
   TipoItemOrcamento as PrismaTipoItemOrcamento,
 } from '@prisma/client';
@@ -25,15 +24,19 @@ import { NumeroOS } from '../../domain/ordem-de-servico/value-objects/NumeroOS';
 import { StatusOS, StatusOSEnum } from '../../domain/ordem-de-servico/value-objects/StatusOS';
 import { UniqueID } from '../../domain/shared/UniqueID';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { EventDispatcher } from '../events/EventDispatcher';
 
 type PrismaOSCompleta = PrismaOS & {
   itensOrcamento: PrismaItemOrcamento[];
-  execucoes: (PrismaExecucao & { pecasUtilizadas: PrismaPecaUtilizada[] })[];
+  execucoes: PrismaExecucao[];
 };
 
 @Injectable()
 export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventDispatcher: EventDispatcher,
+  ) {}
 
   private toDomain(row: PrismaOSCompleta): OrdemDeServico {
     const itens = row.itensOrcamento.map((i) =>
@@ -42,7 +45,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
           tipo:
             i.tipo === PrismaTipoItemOrcamento.SERVICO
               ? TipoItemOrcamento.SERVICO
-              : TipoItemOrcamento.PECA,
+              : TipoItemOrcamento.INSUMO,
           referenciaId: new UniqueID(i.referenciaId),
           descricao: i.descricao,
           quantidade: i.quantidade,
@@ -56,15 +59,11 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
 
     const execucoes = row.execucoes.map((e) => {
       const props: ExecucaoDeServicoProps = {
+        itemOrcamentoId: new UniqueID(e.itemOrcamentoId),
         servicoId: new UniqueID(e.servicoId),
         mecanicoId: new UniqueID(e.mecanicoId),
         inicio: e.inicio,
         fim: e.fim ?? undefined,
-        observacoes: e.observacoes ?? undefined,
-        pecasUtilizadas: e.pecasUtilizadas.map((p) => ({
-          pecaInsumoId: new UniqueID(p.pecaInsumoId),
-          quantidade: p.quantidade,
-        })),
         criadoEm: e.criadoEm,
         atualizadoEm: e.criadoEm,
       };
@@ -108,22 +107,35 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
         },
       });
 
-      await tx.itemOrcamento.deleteMany({ where: { ordemDeServicoId: osId } });
-      if (os.itensOrcamento.length > 0) {
-        await tx.itemOrcamento.createMany({
-          data: os.itensOrcamento.map((i) => ({
-            id: i.id.toValue(),
+      const itemIds = os.itensOrcamento.map((i) => i.id.toValue());
+      await tx.itemOrcamento.deleteMany({
+        where: {
+          ordemDeServicoId: osId,
+          ...(itemIds.length > 0 ? { id: { notIn: itemIds } } : {}),
+        },
+      });
+      for (const item of os.itensOrcamento) {
+        await tx.itemOrcamento.upsert({
+          where: { id: item.id.toValue() },
+          create: {
+            id: item.id.toValue(),
             ordemDeServicoId: osId,
             tipo:
-              i.tipo === TipoItemOrcamento.SERVICO
+              item.tipo === TipoItemOrcamento.SERVICO
                 ? PrismaTipoItemOrcamento.SERVICO
-                : PrismaTipoItemOrcamento.PECA,
-            referenciaId: i.referenciaId.toValue(),
-            descricao: i.descricao,
-            quantidade: i.quantidade,
-            valorUnitario: i.valorUnitario,
-            valorTotal: i.valorTotal,
-          })),
+                : PrismaTipoItemOrcamento.INSUMO,
+            referenciaId: item.referenciaId.toValue(),
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valorUnitario: item.valorUnitario,
+            valorTotal: item.valorTotal,
+          },
+          update: {
+            descricao: item.descricao,
+            quantidade: item.quantidade,
+            valorUnitario: item.valorUnitario,
+            valorTotal: item.valorTotal,
+          },
         });
       }
 
@@ -134,31 +146,21 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
           create: {
             id: execId,
             ordemDeServicoId: osId,
+            itemOrcamentoId: execucao.itemOrcamentoId.toValue(),
             servicoId: execucao.servicoId.toValue(),
             mecanicoId: execucao.mecanicoId.toValue(),
             inicio: execucao.inicio,
             fim: execucao.fim ?? null,
             tempoExecucaoMinutos: execucao.tempoExecucaoMinutos ?? null,
-            observacoes: execucao.observacoes ?? null,
           },
           update: {
             fim: execucao.fim ?? null,
             tempoExecucaoMinutos: execucao.tempoExecucaoMinutos ?? null,
-            observacoes: execucao.observacoes ?? null,
           },
         });
-        await tx.pecaUtilizada.deleteMany({ where: { execucaoDeServicoId: execId } });
-        if (execucao.pecasUtilizadas.length > 0) {
-          await tx.pecaUtilizada.createMany({
-            data: execucao.pecasUtilizadas.map((p) => ({
-              execucaoDeServicoId: execId,
-              pecaInsumoId: p.pecaInsumoId.toValue(),
-              quantidade: p.quantidade,
-            })),
-          });
-        }
       }
     });
+    await this.eventDispatcher.publish(os.pullEvents());
   }
 
   async buscarPorId(id: UniqueID): Promise<OrdemDeServico | null> {
@@ -166,7 +168,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
       where: { id: id.toValue() },
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: true,
       },
     });
     return row ? this.toDomain(row) : null;
@@ -177,7 +179,18 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
       where: { numero },
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: true,
+      },
+    });
+    return row ? this.toDomain(row) : null;
+  }
+
+  async buscarPorItemOrcamentoId(itemOrcamentoId: UniqueID): Promise<OrdemDeServico | null> {
+    const row = await this.prisma.ordemDeServico.findFirst({
+      where: { itensOrcamento: { some: { id: itemOrcamentoId.toValue() } } },
+      include: {
+        itensOrcamento: true,
+        execucoes: true,
       },
     });
     return row ? this.toDomain(row) : null;
@@ -187,7 +200,7 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
     const rows = await this.prisma.ordemDeServico.findMany({
       include: {
         itensOrcamento: true,
-        execucoes: { include: { pecasUtilizadas: true } },
+        execucoes: true,
       },
       orderBy: { criadoEm: 'desc' },
     });
@@ -205,7 +218,10 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
   async tempoMedioExecucaoMinutos(): Promise<number> {
     const result = await this.prisma.execucaoDeServico.aggregate({
       _avg: { tempoExecucaoMinutos: true },
-      where: { tempoExecucaoMinutos: { not: null } },
+      where: {
+        tempoExecucaoMinutos: { not: null },
+        ordemDeServico: { status: { in: ['FINALIZADA', 'ENTREGUE'] } },
+      },
     });
     return Math.round(result._avg.tempoExecucaoMinutos ?? 0);
   }
@@ -213,7 +229,10 @@ export class PrismaOrdemDeServicoRepository implements IOrdemDeServicoRepository
   async tempoMedioExecucaoPorServico(): Promise<TempoMedioPorServicoRow[]> {
     const rows = await this.prisma.execucaoDeServico.groupBy({
       by: ['servicoId'],
-      where: { tempoExecucaoMinutos: { not: null } },
+      where: {
+        tempoExecucaoMinutos: { not: null },
+        ordemDeServico: { status: { in: ['FINALIZADA', 'ENTREGUE'] } },
+      },
       _avg: { tempoExecucaoMinutos: true },
       _count: { _all: true },
     });

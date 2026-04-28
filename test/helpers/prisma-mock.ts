@@ -19,6 +19,13 @@ export function createPrismaMock() {
   const oss: any[] = [];
   const itensOrcamento: any[] = [];
   const execucoes: any[] = [];
+  const orcamentoTokens: any[] = [];
+
+  const expandOS = (o: any) => ({
+    ...o,
+    itensOrcamento: itensOrcamento.filter((i) => i.ordemDeServicoId === o.id),
+    execucoes: execucoes.filter((e) => e.ordemDeServicoId === o.id),
+  });
 
   const mock: any = {
     $connect: jest.fn(),
@@ -48,7 +55,7 @@ export function createPrismaMock() {
     cliente: {
       findUnique: async ({ where }: any) => {
         if (where.id) return clientes.find((c) => c.id === where.id) ?? null;
-        if (where.cpfCnpj) return clientes.find((c) => c.cpfCnpj === where.cpfCnpj) ?? null;
+        if (where.documento) return clientes.find((c) => c.documento === where.documento) ?? null;
         return null;
       },
       findMany: async () => clientes,
@@ -61,7 +68,7 @@ export function createPrismaMock() {
         const c = {
           id: create.id,
           tipo: create.tipo as TipoCliente,
-          cpfCnpj: create.cpfCnpj,
+          documento: create.documento,
           nome: create.nome,
           email: create.email,
           telefone: create.telefone ?? null,
@@ -118,7 +125,7 @@ export function createPrismaMock() {
       upsert: async ({ create }: any) => create,
       delete: async () => ({}),
     },
-    pecaInsumo: {
+    insumo: {
       findUnique: async () => null,
       findMany: async () => [],
       upsert: async ({ create }: any) => create,
@@ -130,29 +137,31 @@ export function createPrismaMock() {
           ? oss.find((o) => o.id === where.id)
           : oss.find((o) => o.numero === where.numero);
         if (!found) return null;
-        if (include) {
-          return {
-            ...found,
-            itensOrcamento: itensOrcamento.filter((i) => i.ordemDeServicoId === found.id),
-            execucoes: execucoes
-              .filter((e) => e.ordemDeServicoId === found.id)
-              .map((e) => ({ ...e, pecasUtilizadas: [] })),
-          };
+        return include ? expandOS(found) : found;
+      },
+      findFirst: async ({ where, include, orderBy, select }: any = {}) => {
+        let candidates = [...oss];
+        if (where?.itensOrcamento?.some?.id) {
+          const itemId = where.itensOrcamento.some.id;
+          candidates = candidates.filter((o) =>
+            itensOrcamento.some((i) => i.ordemDeServicoId === o.id && i.id === itemId),
+          );
         }
-        return found;
+        if (orderBy?.numero === 'desc') {
+          candidates.sort((a, b) => b.numero - a.numero);
+        }
+        const found = candidates[0];
+        if (!found) return null;
+        if (select) {
+          const projected: any = {};
+          for (const key of Object.keys(select)) projected[key] = (found as any)[key];
+          return projected;
+        }
+        return include ? expandOS(found) : found;
       },
-      findFirst: async () => {
-        const sorted = [...oss].sort((a, b) => b.numero - a.numero);
-        return sorted[0] ?? null;
+      findMany: async ({ include }: any = {}) => {
+        return include ? oss.map((o) => expandOS(o)) : [...oss];
       },
-      findMany: async () =>
-        oss.map((o) => ({
-          ...o,
-          itensOrcamento: itensOrcamento.filter((i) => i.ordemDeServicoId === o.id),
-          execucoes: execucoes
-            .filter((e) => e.ordemDeServicoId === o.id)
-            .map((e) => ({ ...e, pecasUtilizadas: [] })),
-        })),
       upsert: async ({ where, create, update }: any) => {
         const idx = oss.findIndex((o) => o.id === where.id);
         if (idx >= 0) {
@@ -176,29 +185,54 @@ export function createPrismaMock() {
     },
     itemOrcamento: {
       deleteMany: async ({ where }: any) => {
+        let removed = 0;
         for (let i = itensOrcamento.length - 1; i >= 0; i--) {
-          if (itensOrcamento[i].ordemDeServicoId === where.ordemDeServicoId) {
-            itensOrcamento.splice(i, 1);
-          }
+          const item = itensOrcamento[i];
+          if (item.ordemDeServicoId !== where.ordemDeServicoId) continue;
+          if (where.id?.notIn && where.id.notIn.includes(item.id)) continue;
+          itensOrcamento.splice(i, 1);
+          removed += 1;
         }
-        return { count: 0 };
+        return { count: removed };
       },
-      createMany: async ({ data }: any) => {
-        for (const d of data) itensOrcamento.push({ ...d, criadoEm: new Date() });
-        return { count: data.length };
+      upsert: async ({ where, create, update }: any) => {
+        const idx = itensOrcamento.findIndex((i) => i.id === where.id);
+        if (idx >= 0) {
+          itensOrcamento[idx] = { ...itensOrcamento[idx], ...update };
+          return itensOrcamento[idx];
+        }
+        const created = { ...create, criadoEm: new Date() };
+        itensOrcamento.push(created);
+        return created;
       },
     },
     execucaoDeServico: {
-      upsert: async ({ where, create }: any) => {
+      upsert: async ({ where, create, update }: any) => {
         const idx = execucoes.findIndex((e) => e.id === where.id);
-        if (idx < 0) execucoes.push(create);
-        return create;
+        if (idx >= 0) {
+          execucoes[idx] = { ...execucoes[idx], ...update };
+          return execucoes[idx];
+        }
+        const created = { ...create, criadoEm: new Date() };
+        execucoes.push(created);
+        return created;
       },
       aggregate: async () => ({ _avg: { tempoExecucaoMinutos: 0 } }),
+      groupBy: async () => [],
     },
-    pecaUtilizada: {
-      deleteMany: async () => ({ count: 0 }),
-      createMany: async ({ data }: any) => ({ count: data.length }),
+    orcamentoToken: {
+      findUnique: async ({ where }: any) =>
+        orcamentoTokens.find((t) => t.token === where.token || t.id === where.id) ?? null,
+      create: async ({ data }: any) => {
+        const tk = { ...data, id: data.id ?? randomUUID(), criadoEm: new Date() };
+        orcamentoTokens.push(tk);
+        return tk;
+      },
+      update: async ({ where, data }: any) => {
+        const idx = orcamentoTokens.findIndex((t) => t.id === where.id);
+        if (idx >= 0) orcamentoTokens[idx] = { ...orcamentoTokens[idx], ...data };
+        return orcamentoTokens[idx];
+      },
     },
   };
 

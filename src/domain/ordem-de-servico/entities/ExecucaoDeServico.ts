@@ -2,27 +2,20 @@ import { DomainError } from '../../shared/DomainError';
 import { Entity, EntityProps } from '../../shared/Entity';
 import { UniqueID } from '../../shared/UniqueID';
 
-export interface PecaUtilizada {
-  pecaInsumoId: UniqueID;
-  quantidade: number;
-}
-
 export interface ExecucaoDeServicoProps extends EntityProps {
+  itemOrcamentoId: UniqueID;
   servicoId: UniqueID;
   mecanicoId: UniqueID;
   inicio: Date;
   fim?: Date;
-  observacoes?: string;
-  pecasUtilizadas: PecaUtilizada[];
 }
 
 export interface NovaExecucaoInput {
+  itemOrcamentoId: string;
   servicoId: string;
   mecanicoId: string;
   inicio: Date;
   fim?: Date;
-  observacoes?: string;
-  pecasUtilizadas?: Array<{ pecaInsumoId: string; quantidade: number }>;
 }
 
 export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
@@ -35,15 +28,11 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
       throw new DomainError('Fim anterior ao início da execução', 'EXECUCAO_PERIODO_INVALIDO');
     }
     return new ExecucaoDeServico({
+      itemOrcamentoId: new UniqueID(input.itemOrcamentoId),
       servicoId: new UniqueID(input.servicoId),
       mecanicoId: new UniqueID(input.mecanicoId),
       inicio: input.inicio,
       fim: input.fim,
-      observacoes: input.observacoes?.trim(),
-      pecasUtilizadas: (input.pecasUtilizadas ?? []).map((p) => ({
-        pecaInsumoId: new UniqueID(p.pecaInsumoId),
-        quantidade: p.quantidade,
-      })),
     });
   }
 
@@ -51,6 +40,9 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
     return new ExecucaoDeServico(props, id);
   }
 
+  public get itemOrcamentoId(): UniqueID {
+    return this.props.itemOrcamentoId;
+  }
   public get servicoId(): UniqueID {
     return this.props.servicoId;
   }
@@ -63,15 +55,23 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
   public get fim(): Date | undefined {
     return this.props.fim;
   }
-  public get observacoes(): string | undefined {
-    return this.props.observacoes;
-  }
-  public get pecasUtilizadas(): ReadonlyArray<PecaUtilizada> {
-    return this.props.pecasUtilizadas;
-  }
 
   public get tempoExecucaoMinutos(): number | undefined {
     if (!this.props.fim) return undefined;
     return Math.round((this.props.fim.getTime() - this.props.inicio.getTime()) / 60000);
+  }
+
+  public get emAndamento(): boolean {
+    return this.props.fim === undefined;
+  }
+
+  public finalizar(fim: Date = new Date()): void {
+    if (this.props.fim) {
+      throw new DomainError('Execução já finalizada', 'EXECUCAO_JA_FINALIZADA');
+    }
+    if (fim < this.props.inicio) {
+      throw new DomainError('Fim anterior ao início da execução', 'EXECUCAO_PERIODO_INVALIDO');
+    }
+    this.props.fim = fim;
   }
 }

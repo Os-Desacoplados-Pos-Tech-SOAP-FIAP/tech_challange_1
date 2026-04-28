@@ -1,11 +1,9 @@
-import { DomainEvent } from '../../shared/DomainEvent';
+import { BaseDomainEvent } from '../../shared/DomainEvent';
+import { EVENTS } from '../../shared/events/EventNames';
 import { UniqueID } from '../../shared/UniqueID';
 
-export class ClienteCadastrado implements DomainEvent {
-  public readonly ocorridoEm: Date;
-  public readonly eventName = 'ClienteCadastrado';
-
-  constructor(public readonly aggregateId: UniqueID) {
-    this.ocorridoEm = new Date();
+export class ClienteCadastrado extends BaseDomainEvent {
+  constructor(aggregateId: UniqueID) {
+    super(aggregateId, EVENTS.CLIENTE_CADASTRADO, 'ClienteCadastrado');
   }
 }

@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { Cliente } from '../../../domain/cliente/entities/Cliente';
 import { IClienteRepository } from '../../../domain/cliente/repositories/IClienteRepository';
 import { UniqueID } from '../../../domain/shared/UniqueID';
@@ -13,14 +14,10 @@ export class BuscarClienteUseCase {
   ) {}
 
   async porId(id: string): Promise<Cliente> {
-    const cliente = await this.clienteRepository.buscarPorId(new UniqueID(id));
-    if (!cliente) throw new NotFoundException('Cliente não encontrado');
-    return cliente;
+    return ensureFound(await this.clienteRepository.buscarPorId(new UniqueID(id)), 'Cliente');
   }
 
-  async porDocumento(cpfCnpj: string): Promise<Cliente> {
-    const cliente = await this.clienteRepository.buscarPorDocumento(cpfCnpj);
-    if (!cliente) throw new NotFoundException('Cliente não encontrado');
-    return cliente;
+  async porDocumento(documento: string): Promise<Cliente> {
+    return ensureFound(await this.clienteRepository.buscarPorDocumento(documento), 'Cliente');
   }
 }

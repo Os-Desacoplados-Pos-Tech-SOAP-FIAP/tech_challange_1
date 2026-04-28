@@ -15,7 +15,7 @@ export enum TipoCliente {
 
 export interface ClienteProps extends EntityProps {
   tipo: TipoCliente;
-  cpfCnpj: CPF | CNPJ;
+  documento: CPF | CNPJ;
   nome: string;
   email: Email;
   telefone?: Telefone;
@@ -23,7 +23,7 @@ export interface ClienteProps extends EntityProps {
 
 export interface NovoClienteInput {
   tipo: TipoCliente;
-  cpfCnpj: string;
+  documento: string;
   nome: string;
   email: string;
   telefone?: string;
@@ -38,14 +38,14 @@ export class Cliente extends AggregateRoot<ClienteProps> {
     if (!input.nome || input.nome.trim().length < 3) {
       throw new DomainError('Nome do cliente deve ter ao menos 3 caracteres', 'NOME_INVALIDO');
     }
-    const cpfCnpj =
-      input.tipo === TipoCliente.PF ? CPF.create(input.cpfCnpj) : CNPJ.create(input.cpfCnpj);
+    const documento =
+      input.tipo === TipoCliente.PF ? CPF.create(input.documento) : CNPJ.create(input.documento);
     const email = Email.create(input.email);
     const telefone = input.telefone ? Telefone.create(input.telefone) : undefined;
 
     const cliente = new Cliente({
       tipo: input.tipo,
-      cpfCnpj,
+      documento,
       nome: input.nome.trim(),
       email,
       telefone,
@@ -63,8 +63,8 @@ export class Cliente extends AggregateRoot<ClienteProps> {
     return this.props.tipo;
   }
 
-  public get cpfCnpj(): CPF | CNPJ {
-    return this.props.cpfCnpj;
+  public get documento(): CPF | CNPJ {
+    return this.props.documento;
   }
 
   public get nome(): string {

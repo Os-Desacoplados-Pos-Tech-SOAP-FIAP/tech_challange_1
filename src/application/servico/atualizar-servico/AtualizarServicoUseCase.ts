@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
+import { ensureFound } from '../../../common/utils/ensure-found';
 import { Servico } from '../../../domain/servico/entities/Servico';
 import { IServicoRepository } from '../../../domain/servico/repositories/IServicoRepository';
 import { UniqueID } from '../../../domain/shared/UniqueID';
@@ -21,8 +22,10 @@ export class AtualizarServicoUseCase {
   ) {}
 
   async execute(input: AtualizarServicoInput): Promise<Servico> {
-    const servico = await this.servicoRepository.buscarPorId(new UniqueID(input.id));
-    if (!servico) throw new NotFoundException('Serviço não encontrado');
+    const servico = ensureFound(
+      await this.servicoRepository.buscarPorId(new UniqueID(input.id)),
+      'Serviço',
+    );
     servico.atualizar(input);
     await this.servicoRepository.salvar(servico);
     return servico;

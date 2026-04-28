@@ -1,10 +1,9 @@
-import { DomainEvent } from '../../shared/DomainEvent';
+import { BaseDomainEvent } from '../../shared/DomainEvent';
+import { EVENTS } from '../../shared/events/EventNames';
 import { UniqueID } from '../../shared/UniqueID';
 
-export class OSEntregue implements DomainEvent {
-  public readonly ocorridoEm: Date;
-  public readonly eventName = 'OSEntregue';
-  constructor(public readonly aggregateId: UniqueID) {
-    this.ocorridoEm = new Date();
+export class OSEntregue extends BaseDomainEvent {
+  constructor(aggregateId: UniqueID) {
+    super(aggregateId, EVENTS.OS_ENTREGUE, 'OSEntregue');
   }
 }
