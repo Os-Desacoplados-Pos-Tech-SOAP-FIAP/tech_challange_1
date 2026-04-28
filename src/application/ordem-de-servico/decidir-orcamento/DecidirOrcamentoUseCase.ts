@@ -5,7 +5,6 @@ import { ensureFound } from '../../../common/utils/ensure-found';
 import { OrdemDeServico } from '../../../domain/ordem-de-servico/entities/OrdemDeServico';
 import { IOrcamentoTokenRepository } from '../../../domain/ordem-de-servico/repositories/IOrcamentoTokenRepository';
 import { IOrdemDeServicoRepository } from '../../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
-import { StatusOSEnum } from '../../../domain/ordem-de-servico/value-objects/StatusOS';
 import { DomainError } from '../../../domain/shared/DomainError';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 
@@ -45,9 +44,11 @@ export class DecidirOrcamentoUseCase {
       );
     }
 
-    const proximoStatus =
-      input.decisao === 'APROVADA' ? StatusOSEnum.APROVADA : StatusOSEnum.REPROVADA;
-    os.transicionarPara(proximoStatus, 'CLIENTE');
+    if (input.decisao === 'APROVADA') {
+      os.aprovarOrcamento();
+    } else {
+      os.recusarOrcamento();
+    }
 
     await this.osRepository.salvar(os);
     await this.tokenRepository.marcarComoUsado(record.id);

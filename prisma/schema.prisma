@@ -23,7 +23,6 @@ enum StatusOS {
   EM_EXECUCAO
   FINALIZADA
   ENTREGUE
-  CANCELADA
 }
 
 enum TipoCliente {
@@ -101,8 +100,6 @@ model Insumo {
   estoqueMinimo      Int
   criadoEm           DateTime    @default(now())
   atualizadoEm       DateTime    @updatedAt
-
-  insumosUtilizados InsumoUtilizado[]
 }
 
 model OrdemDeServico {
@@ -133,33 +130,23 @@ model ItemOrcamento {
   valorTotal      Decimal           @db.Decimal(10, 2)
   criadoEm        DateTime          @default(now())
 
-  ordemDeServico OrdemDeServico @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  ordemDeServico OrdemDeServico     @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  execucao       ExecucaoDeServico?
 }
 
 model ExecucaoDeServico {
   id                   String   @id @default(uuid())
   ordemDeServicoId     String
+  itemOrcamentoId      String   @unique
   servicoId            String
   mecanicoId           String
   inicio               DateTime
   fim                  DateTime?
   tempoExecucaoMinutos Int?
-  observacoes          String?
   criadoEm             DateTime @default(now())
 
-  ordemDeServico   OrdemDeServico    @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
-  insumosUtilizados InsumoUtilizado[]
-}
-
-model InsumoUtilizado {
-  id                  String   @id @default(uuid())
-  execucaoDeServicoId String
-  insumoId            String
-  quantidade          Int
-  criadoEm            DateTime @default(now())
-
-  execucao ExecucaoDeServico @relation(fields: [execucaoDeServicoId], references: [id], onDelete: Cascade)
-  insumo   Insumo            @relation(fields: [insumoId], references: [id])
+  ordemDeServico OrdemDeServico @relation(fields: [ordemDeServicoId], references: [id], onDelete: Cascade)
+  itemOrcamento  ItemOrcamento  @relation(fields: [itemOrcamentoId], references: [id], onDelete: Cascade)
 }
 
 model OrcamentoToken {

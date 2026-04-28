@@ -502,6 +502,7 @@ async function main(): Promise<void> {
    });
 
    // 4. EM_EXECUCAO — Fernanda/Daily
+   const itemPastilhasId = '00000000-0000-0000-0005-000000000001';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: fernanda.id,
@@ -512,6 +513,7 @@ async function main(): Promise<void> {
          itensOrcamento: {
             create: [
                {
+                  id: itemPastilhasId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoPastilhas.id,
                   descricao: 'Troca de pastilhas',
@@ -540,14 +542,11 @@ async function main(): Promise<void> {
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemPastilhasId,
                   servicoId: servicoPastilhas.id,
                   mecanicoId: mecanico1.id,
                   inicio: horasAtras(2),
                   fim: null,
-                  observacoes: 'Iniciando troca de pastilhas',
-                  insumosUtilizados: {
-                     create: [{ insumoId: pastilhaFreio.id, quantidade: 1 }],
-                  },
                },
             ],
          },
@@ -555,6 +554,7 @@ async function main(): Promise<void> {
    });
 
    // 5. FINALIZADA — Maria/Onix
+   const itemRevisaoId = '00000000-0000-0000-0005-000000000002';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: maria.id,
@@ -565,6 +565,7 @@ async function main(): Promise<void> {
          itensOrcamento: {
             create: [
                {
+                  id: itemRevisaoId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoRevisao.id,
                   descricao: 'Revisão geral',
@@ -593,18 +594,12 @@ async function main(): Promise<void> {
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemRevisaoId,
                   servicoId: servicoRevisao.id,
                   mecanicoId: mecanico2.id,
                   inicio: horasAtras(10),
                   fim: horasAtras(8),
                   tempoExecucaoMinutos: 120,
-                  observacoes: 'Revisão completa incluindo troca de correia',
-                  insumosUtilizados: {
-                     create: [
-                        { insumoId: correia.id, quantidade: 1 },
-                        { insumoId: filtroOleo.id, quantidade: 1 },
-                     ],
-                  },
                },
             ],
          },
@@ -612,6 +607,7 @@ async function main(): Promise<void> {
    });
 
    // 6. ENTREGUE — Ana/Civic
+   const itemAlinhamentoId = '00000000-0000-0000-0005-000000000003';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: ana.id,
@@ -630,6 +626,7 @@ async function main(): Promise<void> {
                   valorTotal: 1680,
                },
                {
+                  id: itemAlinhamentoId,
                   tipo: TipoItemOrcamento.SERVICO,
                   referenciaId: servicoAlinhamento.id,
                   descricao: 'Alinhamento',
@@ -642,27 +639,24 @@ async function main(): Promise<void> {
          execucoes: {
             create: [
                {
+                  itemOrcamentoId: itemAlinhamentoId,
                   servicoId: servicoAlinhamento.id,
                   mecanicoId: mecanico1.id,
                   inicio: horasAtras(48),
                   fim: horasAtras(45),
                   tempoExecucaoMinutos: 180,
-                  observacoes: 'Troca dos quatro pneus com alinhamento',
-                  insumosUtilizados: {
-                     create: [{ insumoId: pneu.id, quantidade: 4 }],
-                  },
                },
             ],
          },
       },
    });
 
-   // 7. CANCELADA — Carlos/Uno
+   // 7. REPROVADA — Carlos/Uno
    await prisma.ordemDeServico.create({
       data: {
          clienteId: carlos.id,
          veiculoId: veiculoCarlos.id,
-         status: StatusOS.CANCELADA,
+         status: StatusOS.REPROVADA,
          valorEstimado: 600,
          observacoes: `${SEED_MARKER} Cliente optou por realizar o serviço em outra oficina`,
          itensOrcamento: {

@@ -1,4 +1,4 @@
-import { OsStateMachine, PerfilSolicitante } from '../state-machine/OsStateMachine';
+import { OsStateMachine } from '../state-machine/OsStateMachine';
 import { StatusOSEnum } from './StatusOSEnum';
 
 export { StatusOSEnum };
@@ -22,12 +22,8 @@ export class StatusOS {
     return OsStateMachine.canTransition(this._value, novo);
   }
 
-  public transicionar(novo: StatusOSEnum, perfil?: PerfilSolicitante): StatusOS {
-    if (perfil) {
-      OsStateMachine.assertRoleAllowed(this._value, novo, perfil);
-    } else {
-      OsStateMachine.assertTransition(this._value, novo);
-    }
+  public transicionar(novo: StatusOSEnum): StatusOS {
+    OsStateMachine.assertTransition(this._value, novo);
     return new StatusOS(novo);
   }
 

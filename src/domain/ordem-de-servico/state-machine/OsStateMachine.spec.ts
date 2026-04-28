@@ -24,105 +24,36 @@ describe('OsStateMachine', () => {
         OsStateMachine.canTransition(StatusOSEnum.ENTREGUE, StatusOSEnum.EM_DIAGNOSTICO),
       ).toBe(false);
       expect(
-        OsStateMachine.canTransition(StatusOSEnum.CANCELADA, StatusOSEnum.RECEBIDA),
+        OsStateMachine.canTransition(StatusOSEnum.REPROVADA, StatusOSEnum.APROVADA),
       ).toBe(false);
     });
   });
 
-  describe('allowsRole', () => {
-    it('só CLIENTE aprova/reprova orçamento', () => {
-      expect(
-        OsStateMachine.allowsRole(
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          StatusOSEnum.APROVADA,
-          'CLIENTE',
-        ),
-      ).toBe(true);
-      expect(
-        OsStateMachine.allowsRole(
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          StatusOSEnum.APROVADA,
-          'ATENDENTE',
-        ),
-      ).toBe(false);
-      expect(
-        OsStateMachine.allowsRole(
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          StatusOSEnum.REPROVADA,
-          'MECANICO',
-        ),
-      ).toBe(false);
-    });
-
-    it('só MECANICO envia diagnóstico para aprovação', () => {
-      expect(
-        OsStateMachine.allowsRole(
-          StatusOSEnum.EM_DIAGNOSTICO,
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          'MECANICO',
-        ),
-      ).toBe(true);
-      expect(
-        OsStateMachine.allowsRole(
-          StatusOSEnum.EM_DIAGNOSTICO,
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          'ATENDENTE',
-        ),
-      ).toBe(false);
-    });
-
-    it('ATENDENTE ou ADMINISTRADOR entrega OS finalizada', () => {
-      expect(
-        OsStateMachine.allowsRole(StatusOSEnum.FINALIZADA, StatusOSEnum.ENTREGUE, 'ATENDENTE'),
-      ).toBe(true);
-      expect(
-        OsStateMachine.allowsRole(StatusOSEnum.FINALIZADA, StatusOSEnum.ENTREGUE, 'ADMINISTRADOR'),
-      ).toBe(true);
-      expect(
-        OsStateMachine.allowsRole(StatusOSEnum.FINALIZADA, StatusOSEnum.ENTREGUE, 'MECANICO'),
-      ).toBe(false);
-    });
-  });
-
-  describe('assertTransition / assertRoleAllowed', () => {
+  describe('assertTransition', () => {
     it('lança DomainError em transição inválida', () => {
       expect(() =>
         OsStateMachine.assertTransition(StatusOSEnum.RECEBIDA, StatusOSEnum.EM_EXECUCAO),
       ).toThrow(DomainError);
     });
 
-    it('lança DomainError em perfil não autorizado', () => {
+    it('passa em transição válida', () => {
       expect(() =>
-        OsStateMachine.assertRoleAllowed(
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          StatusOSEnum.APROVADA,
-          'MECANICO',
-        ),
-      ).toThrow(DomainError);
-    });
-
-    it('aceita perfil autorizado', () => {
-      expect(() =>
-        OsStateMachine.assertRoleAllowed(
-          StatusOSEnum.AGUARDANDO_APROVACAO,
-          StatusOSEnum.APROVADA,
-          'CLIENTE',
-        ),
+        OsStateMachine.assertTransition(StatusOSEnum.APROVADA, StatusOSEnum.EM_EXECUCAO),
       ).not.toThrow();
     });
   });
 
   describe('transitionsFrom', () => {
-    it('lista transições de um estado', () => {
+    it('lista transições de AGUARDANDO_APROVACAO (aprovada ou reprovada)', () => {
       const t = OsStateMachine.transitionsFrom(StatusOSEnum.AGUARDANDO_APROVACAO);
       expect(t.map((x) => x.to).sort()).toEqual(
-        [StatusOSEnum.APROVADA, StatusOSEnum.CANCELADA, StatusOSEnum.REPROVADA].sort(),
+        [StatusOSEnum.APROVADA, StatusOSEnum.REPROVADA].sort(),
       );
     });
 
-    it('ENTREGUE e CANCELADA são terminais', () => {
+    it('ENTREGUE e REPROVADA são terminais', () => {
       expect(OsStateMachine.transitionsFrom(StatusOSEnum.ENTREGUE)).toEqual([]);
-      expect(OsStateMachine.transitionsFrom(StatusOSEnum.CANCELADA)).toEqual([]);
+      expect(OsStateMachine.transitionsFrom(StatusOSEnum.REPROVADA)).toEqual([]);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PerfilAcesso } from '@prisma/client';
 
@@ -6,22 +6,16 @@ import { AdicionarItemUseCase } from '../../application/ordem-de-servico/adicion
 import { AvancarStatusUseCase } from '../../application/ordem-de-servico/avancar-status/AvancarStatusUseCase';
 import { ConsultarOSUseCase } from '../../application/ordem-de-servico/consultar-os/ConsultarOSUseCase';
 import { CriarOSUseCase } from '../../application/ordem-de-servico/criar-os/CriarOSUseCase';
-import { FinalizarExecucaoUseCase } from '../../application/ordem-de-servico/finalizar-execucao/FinalizarExecucaoUseCase';
 import { ListarOSUseCase } from '../../application/ordem-de-servico/listar-os/ListarOSUseCase';
-import { RegistrarExecucaoUseCase } from '../../application/ordem-de-servico/registrar-execucao/RegistrarExecucaoUseCase';
 import { TempoMedioPorServicoUseCase } from '../../application/ordem-de-servico/tempo-medio-por-servico/TempoMedioPorServicoUseCase';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import {
   ApiAuthResponses,
   ApiValidationResponses,
 } from '../../common/decorators/swagger';
-import { UsuarioAutenticado } from '../../infrastructure/auth/jwt.strategy';
 import { AdicionarItemDto } from './dto/adicionar-item.dto';
-import { AvancarStatusDto } from './dto/avancar-status.dto';
 import { CriarOSDto } from './dto/criar-os.dto';
 import { OSResponseDto } from './dto/os-response.dto';
-import { RegistrarExecucaoDto } from './dto/registrar-execucao.dto';
 import { TempoMedioPorServicoResponseDto } from './dto/tempo-medio-por-servico-response.dto';
 
 @ApiTags('Ordens de Serviço')
@@ -33,8 +27,6 @@ export class OrdemDeServicoController {
     private readonly consultarOS: ConsultarOSUseCase,
     private readonly listarOS: ListarOSUseCase,
     private readonly avancarStatus: AvancarStatusUseCase,
-    private readonly registrarExecucao: RegistrarExecucaoUseCase,
-    private readonly finalizarExecucaoUseCase: FinalizarExecucaoUseCase,
     private readonly adicionarItemUseCase: AdicionarItemUseCase,
     private readonly tempoMedioPorServicoUseCase: TempoMedioPorServicoUseCase,
   ) {}
@@ -105,28 +97,19 @@ export class OrdemDeServicoController {
     return OSResponseDto.fromDomain(os);
   }
 
-  @Patch(':id/status')
-  @Roles(PerfilAcesso.ATENDENTE, PerfilAcesso.MECANICO, PerfilAcesso.ADMINISTRADOR)
+  @Post(':id/status')
+  @HttpCode(200)
   @ApiOperation({
-    summary: 'Avança status da OS',
+    summary: 'Avança status da OS para o próximo passo manual disponível',
     description:
-      'Transição validada pelo domínio via máquina de estados. O perfil autenticado é checado contra a lista de perfis autorizados para a transição solicitada.',
+      'O backend determina o próximo status com base no estado atual. Avanços manuais ocorrem em EM_DIAGNOSTICO → AGUARDANDO_APROVACAO (requer pelo menos 1 item) e FINALIZADA → ENTREGUE. Demais transições acontecem automaticamente.',
   })
   @ApiResponse({ status: 200, description: 'Status atualizado', type: OSResponseDto })
   @ApiResponse({ status: 404, description: 'OS não encontrada' })
-  @ApiResponse({ status: 403, description: 'Perfil não autorizado para esta transição' })
+  @ApiResponse({ status: 422, description: 'Não há avanço manual disponível neste estado' })
   @ApiAuthResponses()
-  @ApiValidationResponses()
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() dto: AvancarStatusDto,
-    @CurrentUser() user: UsuarioAutenticado,
-  ): Promise<OSResponseDto> {
-    const os = await this.avancarStatus.execute({
-      id,
-      novoStatus: dto.novoStatus,
-      perfilSolicitante: user.perfil,
-    });
+  async updateStatus(@Param('id') id: string): Promise<OSResponseDto> {
+    const os = await this.avancarStatus.execute({ id });
     return OSResponseDto.fromDomain(os);
   }
 
@@ -135,7 +118,7 @@ export class OrdemDeServicoController {
   @ApiOperation({
     summary: 'Adiciona serviço ou insumo ao orçamento da OS',
     description:
-      'Insumos são reservados no estoque no momento da inclusão. Só é permitido em RECEBIDA, EM_DIAGNOSTICO ou AGUARDANDO_APROVACAO.',
+      'Insumos são reservados no estoque no momento da inclusão. Só é permitido em RECEBIDA, EM_DIAGNOSTICO ou AGUARDANDO_APROVACAO. Adicionar o primeiro item em uma OS RECEBIDA avança o status para EM_DIAGNOSTICO automaticamente.',
   })
   @ApiResponse({ status: 201, description: 'Item adicionado', type: OSResponseDto })
   @ApiResponse({ status: 404, description: 'OS, serviço ou insumo não encontrado' })
@@ -160,54 +143,6 @@ export class OrdemDeServicoController {
             quantidade: dto.quantidade,
           },
     );
-    return OSResponseDto.fromDomain(os);
-  }
-
-  @Post(':id/execucoes')
-  @Roles(PerfilAcesso.MECANICO)
-  @ApiOperation({
-    summary: 'Registra execução de serviço na OS',
-    description: 'Exige OS em status EM_EXECUCAO. Se omitir fim, execução fica em andamento.',
-  })
-  @ApiResponse({ status: 201, description: 'Execução registrada', type: OSResponseDto })
-  @ApiResponse({ status: 404, description: 'OS ou insumo não encontrado' })
-  @ApiAuthResponses()
-  @ApiValidationResponses()
-  async registrarExec(
-    @Param('id') id: string,
-    @Body() dto: RegistrarExecucaoDto,
-  ): Promise<OSResponseDto> {
-    const os = await this.registrarExecucao.execute({
-      ordemDeServicoId: id,
-      servicoId: dto.servicoId,
-      mecanicoId: dto.mecanicoId,
-      inicio: dto.inicio,
-      fim: dto.fim,
-      observacoes: dto.observacoes,
-      insumosUtilizados: dto.insumosUtilizados,
-    });
-    return OSResponseDto.fromDomain(os);
-  }
-
-  @Patch(':id/execucoes/:execId/finalizar')
-  @Roles(PerfilAcesso.MECANICO)
-  @ApiOperation({
-    summary: 'Finaliza execução iniciada (marca fim = agora)',
-    description:
-      'Encerra uma execução de serviço que foi registrada sem data de término e calcula o tempo decorrido.',
-  })
-  @ApiResponse({ status: 200, description: 'Execução finalizada', type: OSResponseDto })
-  @ApiResponse({ status: 404, description: 'OS ou execução não encontrada' })
-  @ApiAuthResponses()
-  @ApiValidationResponses()
-  async finalizarExec(
-    @Param('id') id: string,
-    @Param('execId') execId: string,
-  ): Promise<OSResponseDto> {
-    const os = await this.finalizarExecucaoUseCase.execute({
-      ordemDeServicoId: id,
-      execucaoId: execId,
-    });
     return OSResponseDto.fromDomain(os);
   }
 }

@@ -17,6 +17,9 @@ class InMemoryOSRepository implements IOrdemDeServicoRepository {
   async buscarPorNumero(): Promise<OrdemDeServico | null> {
     return null;
   }
+  async buscarPorItemOrcamentoId(): Promise<OrdemDeServico | null> {
+    return null;
+  }
   async listar(): Promise<OrdemDeServico[]> {
     return [];
   }

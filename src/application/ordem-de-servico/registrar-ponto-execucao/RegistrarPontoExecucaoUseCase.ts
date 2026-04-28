@@ -6,25 +6,25 @@ import { OrdemDeServico } from '../../../domain/ordem-de-servico/entities/OrdemD
 import { IOrdemDeServicoRepository } from '../../../domain/ordem-de-servico/repositories/IOrdemDeServicoRepository';
 import { UniqueID } from '../../../domain/shared/UniqueID';
 
-interface FinalizarExecucaoInput {
-  ordemDeServicoId: string;
-  execucaoId: string;
-  fim?: Date;
+export interface RegistrarPontoExecucaoInput {
+  itemOrcamentoId: string;
+  mecanicoId: string;
 }
 
 @Injectable()
-export class FinalizarExecucaoUseCase {
+export class RegistrarPontoExecucaoUseCase {
   constructor(
     @Inject(INJECTION_TOKENS.ORDEM_DE_SERVICO_REPOSITORY)
     private readonly osRepository: IOrdemDeServicoRepository,
   ) {}
 
-  async execute(input: FinalizarExecucaoInput): Promise<OrdemDeServico> {
+  async execute(input: RegistrarPontoExecucaoInput): Promise<OrdemDeServico> {
     const os = ensureFound(
-      await this.osRepository.buscarPorId(new UniqueID(input.ordemDeServicoId)),
-      'OS',
+      await this.osRepository.buscarPorItemOrcamentoId(new UniqueID(input.itemOrcamentoId)),
+      'Item de orçamento',
     );
-    os.finalizarExecucao(input.execucaoId, input.fim ?? new Date());
+
+    os.registrarPontoExecucao(input.itemOrcamentoId, input.mecanicoId);
     await this.osRepository.salvar(os);
     return os;
   }

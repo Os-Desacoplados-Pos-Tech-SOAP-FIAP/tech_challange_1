@@ -2,27 +2,20 @@ import { DomainError } from '../../shared/DomainError';
 import { Entity, EntityProps } from '../../shared/Entity';
 import { UniqueID } from '../../shared/UniqueID';
 
-export interface InsumoUtilizado {
-  insumoId: UniqueID;
-  quantidade: number;
-}
-
 export interface ExecucaoDeServicoProps extends EntityProps {
+  itemOrcamentoId: UniqueID;
   servicoId: UniqueID;
   mecanicoId: UniqueID;
   inicio: Date;
   fim?: Date;
-  observacoes?: string;
-  insumosUtilizados: InsumoUtilizado[];
 }
 
 export interface NovaExecucaoInput {
+  itemOrcamentoId: string;
   servicoId: string;
   mecanicoId: string;
   inicio: Date;
   fim?: Date;
-  observacoes?: string;
-  insumosUtilizados?: Array<{ insumoId: string; quantidade: number }>;
 }
 
 export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
@@ -35,15 +28,11 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
       throw new DomainError('Fim anterior ao início da execução', 'EXECUCAO_PERIODO_INVALIDO');
     }
     return new ExecucaoDeServico({
+      itemOrcamentoId: new UniqueID(input.itemOrcamentoId),
       servicoId: new UniqueID(input.servicoId),
       mecanicoId: new UniqueID(input.mecanicoId),
       inicio: input.inicio,
       fim: input.fim,
-      observacoes: input.observacoes?.trim(),
-      insumosUtilizados: (input.insumosUtilizados ?? []).map((p) => ({
-        insumoId: new UniqueID(p.insumoId),
-        quantidade: p.quantidade,
-      })),
     });
   }
 
@@ -51,6 +40,9 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
     return new ExecucaoDeServico(props, id);
   }
 
+  public get itemOrcamentoId(): UniqueID {
+    return this.props.itemOrcamentoId;
+  }
   public get servicoId(): UniqueID {
     return this.props.servicoId;
   }
@@ -62,12 +54,6 @@ export class ExecucaoDeServico extends Entity<ExecucaoDeServicoProps> {
   }
   public get fim(): Date | undefined {
     return this.props.fim;
-  }
-  public get observacoes(): string | undefined {
-    return this.props.observacoes;
-  }
-  public get insumosUtilizados(): ReadonlyArray<InsumoUtilizado> {
-    return this.props.insumosUtilizados;
   }
 
   public get tempoExecucaoMinutos(): number | undefined {

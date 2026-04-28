@@ -4,21 +4,20 @@ import { AdicionarItemUseCase } from '../../application/ordem-de-servico/adicion
 import { AvancarStatusUseCase } from '../../application/ordem-de-servico/avancar-status/AvancarStatusUseCase';
 import { ConsultarOSUseCase } from '../../application/ordem-de-servico/consultar-os/ConsultarOSUseCase';
 import { CriarOSUseCase } from '../../application/ordem-de-servico/criar-os/CriarOSUseCase';
-import { FinalizarExecucaoUseCase } from '../../application/ordem-de-servico/finalizar-execucao/FinalizarExecucaoUseCase';
 import { ListarOSUseCase } from '../../application/ordem-de-servico/listar-os/ListarOSUseCase';
-import { RegistrarExecucaoUseCase } from '../../application/ordem-de-servico/registrar-execucao/RegistrarExecucaoUseCase';
+import { RegistrarPontoExecucaoUseCase } from '../../application/ordem-de-servico/registrar-ponto-execucao/RegistrarPontoExecucaoUseCase';
 import { TempoMedioPorServicoUseCase } from '../../application/ordem-de-servico/tempo-medio-por-servico/TempoMedioPorServicoUseCase';
+import { ItensDeOrcamentoController } from './itens-de-orcamento.controller';
 import { OrdemDeServicoController } from './ordem-de-servico.controller';
 
 @Module({
-  controllers: [OrdemDeServicoController],
+  controllers: [OrdemDeServicoController, ItensDeOrcamentoController],
   providers: [
     CriarOSUseCase,
     ConsultarOSUseCase,
     ListarOSUseCase,
     AvancarStatusUseCase,
-    RegistrarExecucaoUseCase,
-    FinalizarExecucaoUseCase,
+    RegistrarPontoExecucaoUseCase,
     AdicionarItemUseCase,
     TempoMedioPorServicoUseCase,
   ],
