@@ -70,4 +70,11 @@ export class ItemOrcamento extends Entity<ItemOrcamentoProps> {
   public get valorTotal(): number {
     return Math.round(this.quantidade * this.valorUnitario * 100) / 100;
   }
+
+  public incrementarQuantidade(qtd: number): void {
+    if (!Number.isInteger(qtd) || qtd <= 0) {
+      throw new DomainError('Quantidade inválida', 'ITEM_QTD_INVALIDA');
+    }
+    this.props.quantidade += qtd;
+  }
 }

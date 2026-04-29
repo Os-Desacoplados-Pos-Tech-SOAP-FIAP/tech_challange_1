@@ -99,7 +99,14 @@ export class OrdemDeServico extends AggregateRoot<OrdemDeServicoProps> {
         'ITEM_FASE_INVALIDA',
       );
     }
-    this.props.itensOrcamento.push(ItemOrcamento.criar(input));
+    const existente = this.props.itensOrcamento.find(
+      (i) => i.tipo === input.tipo && i.referenciaId.toValue() === input.referenciaId,
+    );
+    if (existente) {
+      existente.incrementarQuantidade(input.quantidade);
+    } else {
+      this.props.itensOrcamento.push(ItemOrcamento.criar(input));
+    }
     if (this.props.status.value === StatusOSEnum.RECEBIDA) {
       this.props.status = this.props.status.transicionar(StatusOSEnum.EM_DIAGNOSTICO);
     }

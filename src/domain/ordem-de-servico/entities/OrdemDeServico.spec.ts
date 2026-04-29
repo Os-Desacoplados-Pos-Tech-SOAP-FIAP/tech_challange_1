@@ -91,6 +91,92 @@ describe('OrdemDeServico', () => {
         }),
       ).toThrow(DomainError);
     });
+
+    it('incrementa quantidade ao adicionar serviço com mesmo referenciaId em vez de duplicar linha', () => {
+      const os = makeOS();
+      const servicoId = new UniqueID().toValue();
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.SERVICO,
+        referenciaId: servicoId,
+        descricao: 'Alinhamento',
+        quantidade: 2,
+        valorUnitario: 100,
+      });
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.SERVICO,
+        referenciaId: servicoId,
+        descricao: 'Alinhamento',
+        quantidade: 3,
+        valorUnitario: 100,
+      });
+      expect(os.itensOrcamento).toHaveLength(1);
+      expect(os.itensOrcamento[0].quantidade).toBe(5);
+      expect(os.itensOrcamento[0].valorTotal).toBe(500);
+    });
+
+    it('incrementa quantidade para insumo com mesmo referenciaId', () => {
+      const os = makeOS();
+      const insumoId = new UniqueID().toValue();
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.INSUMO,
+        referenciaId: insumoId,
+        descricao: 'Filtro',
+        quantidade: 1,
+        valorUnitario: 30,
+      });
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.INSUMO,
+        referenciaId: insumoId,
+        descricao: 'Filtro',
+        quantidade: 4,
+        valorUnitario: 30,
+      });
+      expect(os.itensOrcamento).toHaveLength(1);
+      expect(os.itensOrcamento[0].quantidade).toBe(5);
+    });
+
+    it('não funde itens com mesmo referenciaId mas tipos diferentes', () => {
+      const os = makeOS();
+      const referenciaId = new UniqueID().toValue();
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.SERVICO,
+        referenciaId,
+        descricao: 'Serviço',
+        quantidade: 1,
+        valorUnitario: 100,
+      });
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.INSUMO,
+        referenciaId,
+        descricao: 'Insumo',
+        quantidade: 1,
+        valorUnitario: 50,
+      });
+      expect(os.itensOrcamento).toHaveLength(2);
+    });
+
+    it('mantém valorUnitario original ao incrementar mesmo se input vier com outro valor', () => {
+      const os = makeOS();
+      const servicoId = new UniqueID().toValue();
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.SERVICO,
+        referenciaId: servicoId,
+        descricao: 'Alinhamento',
+        quantidade: 1,
+        valorUnitario: 100,
+      });
+      os.adicionarItem({
+        tipo: TipoItemOrcamento.SERVICO,
+        referenciaId: servicoId,
+        descricao: 'Alinhamento',
+        quantidade: 2,
+        valorUnitario: 999,
+      });
+      expect(os.itensOrcamento).toHaveLength(1);
+      expect(os.itensOrcamento[0].quantidade).toBe(3);
+      expect(os.itensOrcamento[0].valorUnitario).toBe(100);
+      expect(os.itensOrcamento[0].valorTotal).toBe(300);
+    });
   });
 
   describe('avancarStatus', () => {

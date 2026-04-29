@@ -20,6 +20,8 @@ export function createPrismaMock() {
   const itensOrcamento: any[] = [];
   const execucoes: any[] = [];
   const orcamentoTokens: any[] = [];
+  const servicos: any[] = [];
+  const insumos: any[] = [];
 
   const expandOS = (o: any) => ({
     ...o,
@@ -120,16 +122,67 @@ export function createPrismaMock() {
       },
     },
     servico: {
-      findUnique: async () => null,
-      findMany: async () => [],
-      upsert: async ({ create }: any) => create,
-      delete: async () => ({}),
+      findUnique: async ({ where }: any) => {
+        if (where?.id) return servicos.find((s) => s.id === where.id) ?? null;
+        return null;
+      },
+      findMany: async () => [...servicos],
+      upsert: async ({ where, create, update }: any) => {
+        const idx = servicos.findIndex((s) => s.id === where.id);
+        if (idx >= 0) {
+          servicos[idx] = { ...servicos[idx], ...update, atualizadoEm: new Date() };
+          return servicos[idx];
+        }
+        const s = {
+          id: create.id,
+          nome: create.nome,
+          descricao: create.descricao ?? '',
+          valorPadrao: create.valorPadrao,
+          ativo: create.ativo ?? true,
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        };
+        servicos.push(s);
+        return s;
+      },
+      delete: async ({ where }: any) => {
+        const idx = servicos.findIndex((s) => s.id === where.id);
+        if (idx >= 0) servicos.splice(idx, 1);
+        return {};
+      },
     },
     insumo: {
-      findUnique: async () => null,
-      findMany: async () => [],
-      upsert: async ({ create }: any) => create,
-      delete: async () => ({}),
+      findUnique: async ({ where }: any) => {
+        if (where?.id) return insumos.find((i) => i.id === where.id) ?? null;
+        if (where?.codigo) return insumos.find((i) => i.codigo === where.codigo) ?? null;
+        return null;
+      },
+      findMany: async () => [...insumos],
+      upsert: async ({ where, create, update }: any) => {
+        const idx = insumos.findIndex((i) => i.id === where.id);
+        if (idx >= 0) {
+          insumos[idx] = { ...insumos[idx], ...update, atualizadoEm: new Date() };
+          return insumos[idx];
+        }
+        const ins = {
+          id: create.id,
+          codigo: create.codigo,
+          nome: create.nome,
+          tipo: create.tipo,
+          valorUnitario: create.valorUnitario,
+          quantidadeEstoque: create.quantidadeEstoque,
+          quantidadeReservada: create.quantidadeReservada ?? 0,
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        };
+        insumos.push(ins);
+        return ins;
+      },
+      delete: async ({ where }: any) => {
+        const idx = insumos.findIndex((i) => i.id === where.id);
+        if (idx >= 0) insumos.splice(idx, 1);
+        return {};
+      },
     },
     ordemDeServico: {
       findUnique: async ({ where, include }: any) => {
