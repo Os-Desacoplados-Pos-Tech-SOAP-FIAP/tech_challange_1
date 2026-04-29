@@ -39,6 +39,7 @@ export class ServicoController {
   }
 
   @Get()
+  @Roles(PerfilAcesso.ADMINISTRADOR, PerfilAcesso.ATENDENTE, PerfilAcesso.MECANICO)
   @ApiOperation({ summary: 'Lista serviços do catálogo' })
   @ApiResponse({ status: 200, description: 'Lista retornada', type: ServicoResponseDto, isArray: true })
   @ApiAuthResponses()
