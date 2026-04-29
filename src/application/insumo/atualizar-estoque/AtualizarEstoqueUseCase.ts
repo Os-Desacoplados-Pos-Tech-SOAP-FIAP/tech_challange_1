@@ -9,7 +9,6 @@ import { UniqueID } from '../../../domain/shared/UniqueID';
 interface AtualizarEstoqueInput {
   id: string;
   quantidade: number;
-  minimo?: number;
 }
 
 @Injectable()
@@ -24,7 +23,7 @@ export class AtualizarEstoqueUseCase {
       await this.insumoRepository.buscarPorId(new UniqueID(input.id)),
       'Peça/insumo',
     );
-    insumo.atualizarEstoque(input.quantidade, input.minimo);
+    insumo.atualizarEstoque(input.quantidade);
     await this.insumoRepository.salvar(insumo);
     return insumo;
   }

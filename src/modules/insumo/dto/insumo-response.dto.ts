@@ -9,7 +9,6 @@ export class InsumoResponseDto {
   @ApiProperty({ enum: TipoInsumo }) tipo!: TipoInsumo;
   @ApiProperty() valorUnitario!: number;
   @ApiProperty() quantidadeEstoque!: number;
-  @ApiProperty() estoqueMinimo!: number;
   @ApiProperty() quantidadeReservada!: number;
   @ApiProperty() quantidadeDisponivel!: number;
   @ApiProperty() criadoEm!: Date;
@@ -23,7 +22,6 @@ export class InsumoResponseDto {
       tipo: p.tipo,
       valorUnitario: p.valorUnitario.value,
       quantidadeEstoque: p.estoque.quantidade,
-      estoqueMinimo: p.estoque.minimo,
       quantidadeReservada: p.estoque.quantidadeReservada,
       quantidadeDisponivel: p.estoque.disponivel,
       criadoEm: p.criadoEm,

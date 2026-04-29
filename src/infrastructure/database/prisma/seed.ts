@@ -346,7 +346,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.INSUMO,
          valorUnitario: 45,
          quantidadeEstoque: 100,
-         estoqueMinimo: 10,
       },
    });
 
@@ -360,7 +359,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.PECA,
          valorUnitario: 35.9,
          quantidadeEstoque: 50,
-         estoqueMinimo: 5,
       },
    });
 
@@ -374,7 +372,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.PECA,
          valorUnitario: 180,
          quantidadeEstoque: 30,
-         estoqueMinimo: 4,
       },
    });
 
@@ -388,7 +385,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.PECA,
          valorUnitario: 220,
          quantidadeEstoque: 15,
-         estoqueMinimo: 3,
       },
    });
 
@@ -402,7 +398,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.PECA,
          valorUnitario: 420,
          quantidadeEstoque: 20,
-         estoqueMinimo: 4,
       },
    });
 
@@ -416,7 +411,6 @@ async function main(): Promise<void> {
          tipo: TipoInsumo.PECA,
          valorUnitario: 650.75,
          quantidadeEstoque: 12,
-         estoqueMinimo: 3,
       },
    });
 

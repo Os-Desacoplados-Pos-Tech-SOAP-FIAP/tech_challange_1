@@ -22,19 +22,13 @@ describe('AtualizarEstoqueUseCase', () => {
   beforeEach(() => {
     repo = new InMemoryInsumoRepository();
     useCase = new AtualizarEstoqueUseCase(repo);
-    insumo = Insumo.criar({ codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10, estoqueMinimo: 2 });
+    insumo = Insumo.criar({ codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10 });
     repo.insumos.push(insumo);
   });
 
   it('atualiza quantidade do estoque', async () => {
     const result = await useCase.execute({ id: insumo.id.toValue(), quantidade: 20 });
     expect(result.estoque.quantidade).toBe(20);
-  });
-
-  it('atualiza quantidade e mínimo', async () => {
-    const result = await useCase.execute({ id: insumo.id.toValue(), quantidade: 15, minimo: 5 });
-    expect(result.estoque.quantidade).toBe(15);
-    expect(result.estoque.minimo).toBe(5);
   });
 
   it('lança NotFoundException para insumo inexistente', async () => {

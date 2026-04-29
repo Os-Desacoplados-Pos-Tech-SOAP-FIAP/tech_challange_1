@@ -97,7 +97,6 @@ model Insumo {
   valorUnitario      Decimal     @db.Decimal(10, 2)
   quantidadeEstoque  Int
   quantidadeReservada Int        @default(0)
-  estoqueMinimo      Int
   criadoEm           DateTime    @default(now())
   atualizadoEm       DateTime    @updatedAt
 }

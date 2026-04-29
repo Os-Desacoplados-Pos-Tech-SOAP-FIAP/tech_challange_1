@@ -20,8 +20,8 @@ describe('ListarInsumosUseCase', () => {
 
   it('retorna insumos cadastrados', async () => {
     const repo = new InMemoryInsumoRepository();
-    repo.insumos.push(Insumo.criar({ codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10, estoqueMinimo: 2 }));
-    repo.insumos.push(Insumo.criar({ codigo: 'OL-001', nome: 'Óleo', tipo: TipoInsumo.INSUMO, valorUnitario: 30, quantidadeEstoque: 20, estoqueMinimo: 5 }));
+    repo.insumos.push(Insumo.criar({ codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10 }));
+    repo.insumos.push(Insumo.criar({ codigo: 'OL-001', nome: 'Óleo', tipo: TipoInsumo.INSUMO, valorUnitario: 30, quantidadeEstoque: 20 }));
     const useCase = new ListarInsumosUseCase(repo);
     expect(await useCase.execute()).toHaveLength(2);
   });

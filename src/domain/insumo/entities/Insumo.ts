@@ -26,7 +26,6 @@ export interface NovoInsumoInput {
   tipo: TipoInsumo;
   valorUnitario: number;
   quantidadeEstoque: number;
-  estoqueMinimo: number;
   quantidadeReservada?: number;
 }
 
@@ -44,11 +43,7 @@ export class Insumo extends AggregateRoot<InsumoProps> {
       nome: input.nome.trim(),
       tipo: input.tipo,
       valorUnitario: ValorUnitario.create(input.valorUnitario),
-      estoque: Estoque.create(
-        input.quantidadeEstoque,
-        input.estoqueMinimo,
-        input.quantidadeReservada ?? 0,
-      ),
+      estoque: Estoque.create(input.quantidadeEstoque, input.quantidadeReservada ?? 0),
     });
   }
 
@@ -77,10 +72,9 @@ export class Insumo extends AggregateRoot<InsumoProps> {
     this.touch();
   }
 
-  public atualizarEstoque(quantidade: number, minimo?: number): void {
+  public atualizarEstoque(quantidade: number): void {
     this.props.estoque = Estoque.create(
       quantidade,
-      minimo ?? this.props.estoque.minimo,
       this.props.estoque.quantidadeReservada,
     );
     this.touch();

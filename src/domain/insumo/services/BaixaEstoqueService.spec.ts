@@ -3,14 +3,13 @@ import { Insumo, TipoInsumo } from '../entities/Insumo';
 import { BaixaEstoqueService } from './BaixaEstoqueService';
 
 describe('BaixaEstoqueService', () => {
-  const makeInsumo = (qtd: number, min = 2) =>
+  const makeInsumo = (qtd: number) =>
     Insumo.criar({
       codigo: 'PEC-001',
       nome: 'Filtro',
       tipo: TipoInsumo.PECA,
       valorUnitario: 10,
       quantidadeEstoque: qtd,
-      estoqueMinimo: min,
     });
 
   it('baixa corretamente estoque de múltiplos insumos', () => {

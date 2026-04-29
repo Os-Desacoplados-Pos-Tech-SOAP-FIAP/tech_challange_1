@@ -3,7 +3,6 @@ import { ValueObject } from '../../shared/ValueObject';
 
 interface EstoqueProps {
   quantidade: number;
-  minimo: number;
   quantidadeReservada: number;
 }
 
@@ -12,16 +11,9 @@ export class Estoque extends ValueObject<EstoqueProps> {
     super(props);
   }
 
-  public static create(
-    quantidade: number,
-    minimo: number,
-    quantidadeReservada = 0,
-  ): Estoque {
+  public static create(quantidade: number, quantidadeReservada = 0): Estoque {
     if (!Number.isInteger(quantidade) || quantidade < 0) {
       throw new DomainError('Quantidade de estoque inválida', 'ESTOQUE_INVALIDO');
-    }
-    if (!Number.isInteger(minimo) || minimo < 0) {
-      throw new DomainError('Estoque mínimo inválido', 'ESTOQUE_INVALIDO');
     }
     if (!Number.isInteger(quantidadeReservada) || quantidadeReservada < 0) {
       throw new DomainError('Quantidade reservada inválida', 'ESTOQUE_INVALIDO');
@@ -32,15 +24,11 @@ export class Estoque extends ValueObject<EstoqueProps> {
         'ESTOQUE_INVALIDO',
       );
     }
-    return new Estoque({ quantidade, minimo, quantidadeReservada });
+    return new Estoque({ quantidade, quantidadeReservada });
   }
 
   public get quantidade(): number {
     return this.props.quantidade;
-  }
-
-  public get minimo(): number {
-    return this.props.minimo;
   }
 
   public get quantidadeReservada(): number {
@@ -58,22 +46,14 @@ export class Estoque extends ValueObject<EstoqueProps> {
     if (qtd > this.disponivel) {
       throw new DomainError('Estoque insuficiente para baixa', 'ESTOQUE_INSUFICIENTE');
     }
-    return Estoque.create(
-      this.props.quantidade - qtd,
-      this.props.minimo,
-      this.props.quantidadeReservada,
-    );
+    return Estoque.create(this.props.quantidade - qtd, this.props.quantidadeReservada);
   }
 
   public repor(qtd: number): Estoque {
     if (!Number.isInteger(qtd) || qtd <= 0) {
       throw new DomainError('Quantidade a repor inválida', 'REPOSICAO_INVALIDA');
     }
-    return Estoque.create(
-      this.props.quantidade + qtd,
-      this.props.minimo,
-      this.props.quantidadeReservada,
-    );
+    return Estoque.create(this.props.quantidade + qtd, this.props.quantidadeReservada);
   }
 
   public reservar(qtd: number): Estoque {
@@ -86,11 +66,7 @@ export class Estoque extends ValueObject<EstoqueProps> {
         'ESTOQUE_INSUFICIENTE',
       );
     }
-    return Estoque.create(
-      this.props.quantidade,
-      this.props.minimo,
-      this.props.quantidadeReservada + qtd,
-    );
+    return Estoque.create(this.props.quantidade, this.props.quantidadeReservada + qtd);
   }
 
   public liberarReserva(qtd: number): Estoque {
@@ -103,11 +79,7 @@ export class Estoque extends ValueObject<EstoqueProps> {
         'RESERVA_INCONSISTENTE',
       );
     }
-    return Estoque.create(
-      this.props.quantidade,
-      this.props.minimo,
-      this.props.quantidadeReservada - qtd,
-    );
+    return Estoque.create(this.props.quantidade, this.props.quantidadeReservada - qtd);
   }
 
   public consumirReserva(qtd: number): Estoque {
@@ -122,7 +94,6 @@ export class Estoque extends ValueObject<EstoqueProps> {
     }
     return Estoque.create(
       this.props.quantidade - qtd,
-      this.props.minimo,
       this.props.quantidadeReservada - qtd,
     );
   }

@@ -7,7 +7,6 @@ const base = {
   tipo: TipoInsumo.PECA,
   valorUnitario: 45,
   quantidadeEstoque: 10,
-  estoqueMinimo: 2,
 };
 
 describe('Insumo', () => {
@@ -52,11 +51,10 @@ describe('Insumo', () => {
     expect(p.valorUnitario.value).toBe(99);
   });
 
-  it('atualiza estoque com novo mínimo mantendo reserva', () => {
+  it('atualiza estoque mantendo reserva', () => {
     const p = Insumo.criar({ ...base, quantidadeReservada: 2 });
-    p.atualizarEstoque(20, 5);
+    p.atualizarEstoque(20);
     expect(p.estoque.quantidade).toBe(20);
-    expect(p.estoque.minimo).toBe(5);
     expect(p.estoque.quantidadeReservada).toBe(2);
   });
 

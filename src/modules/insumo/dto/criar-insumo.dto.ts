@@ -27,9 +27,4 @@ export class CriarInsumoDto {
   @IsInt()
   @Min(0)
   quantidadeEstoque!: number;
-
-  @ApiProperty({ example: 5 })
-  @IsInt()
-  @Min(0)
-  estoqueMinimo!: number;
 }

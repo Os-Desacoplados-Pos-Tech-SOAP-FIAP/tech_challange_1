@@ -29,11 +29,7 @@ export class PrismaInsumoRepository implements IInsumoRepository {
         nome: row.nome,
         tipo,
         valorUnitario: ValorUnitario.create(Number(row.valorUnitario)),
-        estoque: Estoque.create(
-          row.quantidadeEstoque,
-          row.estoqueMinimo,
-          row.quantidadeReservada,
-        ),
+        estoque: Estoque.create(row.quantidadeEstoque, row.quantidadeReservada),
         criadoEm: row.criadoEm,
         atualizadoEm: row.atualizadoEm,
       },
@@ -51,7 +47,6 @@ export class PrismaInsumoRepository implements IInsumoRepository {
           : PrismaTipoInsumo.INSUMO,
       valorUnitario: insumo.valorUnitario.value,
       quantidadeEstoque: insumo.estoque.quantidade,
-      estoqueMinimo: insumo.estoque.minimo,
       quantidadeReservada: insumo.estoque.quantidadeReservada,
     };
     await this.prisma.insumo.upsert({

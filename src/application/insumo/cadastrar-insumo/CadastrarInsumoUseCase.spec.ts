@@ -14,7 +14,7 @@ class InMemoryInsumoRepository implements IInsumoRepository {
   async remover(id: UniqueID) { this.insumos = this.insumos.filter(p => !p.id.equals(id)); }
 }
 
-const base = { codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10, estoqueMinimo: 2 };
+const base = { codigo: 'FIL-001', nome: 'Filtro de Óleo', tipo: TipoInsumo.PECA, valorUnitario: 45, quantidadeEstoque: 10 };
 
 describe('CadastrarInsumoUseCase', () => {
   it('cadastra insumo válido', async () => {

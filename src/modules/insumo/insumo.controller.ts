@@ -58,7 +58,7 @@ export class InsumoController {
    @Patch(':id/estoque')
    @ApiOperation({
       summary: 'Atualiza estoque de peça/insumo',
-      description: 'Define nova quantidade e (opcionalmente) novo mínimo de estoque.',
+      description: 'Define nova quantidade em estoque.',
    })
    @ApiResponse({
       status: 200,
