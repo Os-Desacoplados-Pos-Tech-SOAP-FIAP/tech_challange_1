@@ -43,7 +43,7 @@ export class PublicoController {
   })
   @ApiResponse({ status: 200, description: 'Orçamento retornado' })
   @ApiResponse({ status: 404, description: 'Token ou OS não encontrados' })
-  @ApiResponse({ status: 409, description: 'Token já utilizado' })
+  @ApiResponse({ status: 401, description: 'Token já utilizado' })
   async orcamento(
     @Param('numero', ParseIntPipe) numero: number,
     @Query('token') token: string,
@@ -71,7 +71,7 @@ export class PublicoController {
   })
   @ApiResponse({ status: 201, description: 'Decisão registrada' })
   @ApiResponse({ status: 404, description: 'Token ou OS não encontrados' })
-  @ApiResponse({ status: 409, description: 'Token já utilizado' })
+  @ApiResponse({ status: 401, description: 'Token já utilizado' })
   @ApiResponse({ status: 422, description: 'Token não corresponde à OS ou transição inválida' })
   async decidir(
     @Param('numero', ParseIntPipe) numero: number,

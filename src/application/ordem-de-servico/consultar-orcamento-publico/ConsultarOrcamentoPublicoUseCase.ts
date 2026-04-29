@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
 import { ensureFound } from '../../../common/utils/ensure-found';
@@ -23,7 +23,7 @@ export class ConsultarOrcamentoPublicoUseCase {
       'Token de orçamento',
     );
     if (record.usado) {
-      throw new ConflictException('Token já utilizado');
+      throw new UnauthorizedException('Token já utilizado');
     }
     const os = ensureFound(
       await this.osRepository.buscarPorId(new UniqueID(record.ordemDeServicoId)),
