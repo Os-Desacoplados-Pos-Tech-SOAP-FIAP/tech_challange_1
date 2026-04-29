@@ -12,45 +12,46 @@ const prisma = new PrismaClient();
 
 const SEED_MARKER = '[SEED]';
 
-// IDs fixos — garantem que o documento de referência nunca fique desatualizado após um reset
+// IDs fixos — UUIDs v4 válidos (RFC 4122). Padrão: 00000000-0000-4{cat}-8000-00000000000{seq}
+// cat: 0=usuário, 1=cliente, 2=veículo, 3=serviço, 4=insumo, 5=item-execução
 const ID = {
    usuario: {
-      admin:     '00000000-0000-0000-0000-000000000001',
-      atendente: '00000000-0000-0000-0000-000000000002',
-      mecanico1: '00000000-0000-0000-0000-000000000003',
-      mecanico2: '00000000-0000-0000-0000-000000000004',
+      admin:     '00000000-0000-4000-8000-000000000001',
+      atendente: '00000000-0000-4000-8000-000000000002',
+      mecanico1: '00000000-0000-4000-8000-000000000003',
+      mecanico2: '00000000-0000-4000-8000-000000000004',
    },
    cliente: {
-      ana:      '00000000-0000-0000-0001-000000000001',
-      carlos:   '00000000-0000-0000-0001-000000000002',
-      fernanda: '00000000-0000-0000-0001-000000000003',
-      joao:     '00000000-0000-0000-0001-000000000004',
-      maria:    '00000000-0000-0000-0001-000000000005',
-      acme:     '00000000-0000-0000-0001-000000000006',
+      ana:      '00000000-0000-4001-8000-000000000001',
+      carlos:   '00000000-0000-4001-8000-000000000002',
+      fernanda: '00000000-0000-4001-8000-000000000003',
+      joao:     '00000000-0000-4001-8000-000000000004',
+      maria:    '00000000-0000-4001-8000-000000000005',
+      acme:     '00000000-0000-4001-8000-000000000006',
    },
    veiculo: {
-      civic:    '00000000-0000-0000-0002-000000000001',
-      uno:      '00000000-0000-0000-0002-000000000002',
-      daily:    '00000000-0000-0000-0002-000000000003',
-      gol:      '00000000-0000-0000-0002-000000000004',
-      onix:     '00000000-0000-0000-0002-000000000005',
-      sprinter: '00000000-0000-0000-0002-000000000006',
+      civic:    '00000000-0000-4002-8000-000000000001',
+      uno:      '00000000-0000-4002-8000-000000000002',
+      daily:    '00000000-0000-4002-8000-000000000003',
+      gol:      '00000000-0000-4002-8000-000000000004',
+      onix:     '00000000-0000-4002-8000-000000000005',
+      sprinter: '00000000-0000-4002-8000-000000000006',
    },
    servico: {
-      alinhamento:  '00000000-0000-0000-0003-000000000001',
-      balanceamento:'00000000-0000-0000-0003-000000000002',
-      limpezaBicos: '00000000-0000-0000-0003-000000000003',
-      revisaoGeral: '00000000-0000-0000-0003-000000000004',
-      pastilhas:    '00000000-0000-0000-0003-000000000005',
-      trocaOleo:    '00000000-0000-0000-0003-000000000006',
+      alinhamento:  '00000000-0000-4003-8000-000000000001',
+      balanceamento:'00000000-0000-4003-8000-000000000002',
+      limpezaBicos: '00000000-0000-4003-8000-000000000003',
+      revisaoGeral: '00000000-0000-4003-8000-000000000004',
+      pastilhas:    '00000000-0000-4003-8000-000000000005',
+      trocaOleo:    '00000000-0000-4003-8000-000000000006',
    },
    insumo: {
-      oleo5w30:   '00000000-0000-0000-0004-000000000001',
-      filtroOleo: '00000000-0000-0000-0004-000000000002',
-      pastilha:   '00000000-0000-0000-0004-000000000003',
-      correia:    '00000000-0000-0000-0004-000000000004',
-      pneu:       '00000000-0000-0000-0004-000000000005',
-      bateria:    '00000000-0000-0000-0004-000000000006',
+      oleo5w30:   '00000000-0000-4004-8000-000000000001',
+      filtroOleo: '00000000-0000-4004-8000-000000000002',
+      pastilha:   '00000000-0000-4004-8000-000000000003',
+      correia:    '00000000-0000-4004-8000-000000000004',
+      pneu:       '00000000-0000-4004-8000-000000000005',
+      bateria:    '00000000-0000-4004-8000-000000000006',
    },
 };
 
@@ -134,12 +135,12 @@ async function main(): Promise<void> {
 
    // --- Clientes (6) ---
    const ana = await prisma.cliente.upsert({
-      where: { documento: digits('329.567.570-83') },
+      where: { documento: digits('620.324.110-59') },
       update: {},
       create: {
          id: ID.cliente.ana,
          tipo: TipoCliente.PF,
-         documento: digits('329.567.570-83'),
+         documento: digits('620.324.110-59'),
          nome: 'Ana Lima',
          email: 'ana@email.com',
          telefone: digits('(31) 97777-0000'),
@@ -147,12 +148,12 @@ async function main(): Promise<void> {
    });
 
    const carlos = await prisma.cliente.upsert({
-      where: { documento: digits('038.447.920-61') },
+      where: { documento: digits('049.435.860-23') },
       update: {},
       create: {
          id: ID.cliente.carlos,
          tipo: TipoCliente.PF,
-         documento: digits('038.447.920-61'),
+         documento: digits('049.435.860-23'),
          nome: 'Carlos Ferreira',
          email: 'carlos.ferreira@gmail.com',
          telefone: digits('(21) 97654-3210'),
@@ -502,7 +503,7 @@ async function main(): Promise<void> {
    });
 
    // 4. EM_EXECUCAO — Fernanda/Daily
-   const itemPastilhasId = '00000000-0000-0000-0005-000000000001';
+   const itemPastilhasId = '00000000-0000-4005-8000-000000000001';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: fernanda.id,
@@ -554,7 +555,7 @@ async function main(): Promise<void> {
    });
 
    // 5. FINALIZADA — Maria/Onix
-   const itemRevisaoId = '00000000-0000-0000-0005-000000000002';
+   const itemRevisaoId = '00000000-0000-4005-8000-000000000002';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: maria.id,
@@ -607,7 +608,7 @@ async function main(): Promise<void> {
    });
 
    // 6. ENTREGUE — Ana/Civic
-   const itemAlinhamentoId = '00000000-0000-0000-0005-000000000003';
+   const itemAlinhamentoId = '00000000-0000-4005-8000-000000000003';
    await prisma.ordemDeServico.create({
       data: {
          clienteId: ana.id,
