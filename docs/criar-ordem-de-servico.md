@@ -18,54 +18,54 @@ Authorization: Bearer {accessToken}
 
 | Perfil        | Email                   | Senha    | ID                                     |
 |---------------|-------------------------|----------|----------------------------------------|
-| ADMINISTRADOR | admin@oficina.local     | admin123 | `00000000-0000-0000-0000-000000000001` |
-| ATENDENTE     | atendente@oficina.local | senha123 | `00000000-0000-0000-0000-000000000002` |
-| MECANICO      | mecanico1@oficina.local | senha123 | `00000000-0000-0000-0000-000000000003` |
-| MECANICO      | mecanico2@oficina.local | senha123 | `00000000-0000-0000-0000-000000000004` |
+| ADMINISTRADOR | admin@oficina.local     | admin123 | `00000000-0000-4000-8000-000000000001` |
+| ATENDENTE     | atendente@oficina.local | senha123 | `00000000-0000-4000-8000-000000000002` |
+| MECANICO      | mecanico1@oficina.local | senha123 | `00000000-0000-4000-8000-000000000003` |
+| MECANICO      | mecanico2@oficina.local | senha123 | `00000000-0000-4000-8000-000000000004` |
 
 ### Clientes
 
 | Nome                     | Documento          | ID                                     |
 |--------------------------|--------------------|----------------------------------------|
-| Ana Lima                 | 329.567.570-83     | `00000000-0000-0000-0001-000000000001` |
-| Carlos Ferreira          | 038.447.920-61     | `00000000-0000-0000-0001-000000000002` |
-| Fernanda Souza Ribeiro   | 467.749.620-09     | `00000000-0000-0000-0001-000000000003` |
-| João Silva               | 587.603.570-02     | `00000000-0000-0000-0001-000000000004` |
-| Maria Souza              | 370.252.660-94     | `00000000-0000-0000-0001-000000000005` |
-| Transportadora ACME LTDA | 46.483.933/0001-88 | `00000000-0000-0000-0001-000000000006` |
+| Ana Lima                 | 620.324.110-59     | `00000000-0000-4001-8000-000000000001` |
+| Carlos Ferreira          | 049.435.860-23     | `00000000-0000-4001-8000-000000000002` |
+| Fernanda Souza Ribeiro   | 467.749.620-09     | `00000000-0000-4001-8000-000000000003` |
+| João Silva               | 587.603.570-02     | `00000000-0000-4001-8000-000000000004` |
+| Maria Souza              | 370.252.660-94     | `00000000-0000-4001-8000-000000000005` |
+| Transportadora ACME LTDA | 46.483.933/0001-88 | `00000000-0000-4001-8000-000000000006` |
 
 ### Veículos
 
 | Placa   | Modelo   | Cliente                  | ID                                     |
 |---------|----------|--------------------------|----------------------------------------|
-| LIM4H56 | Civic    | Ana Lima                 | `00000000-0000-0000-0002-000000000001` |
-| ABC2D34 | Uno      | Carlos Ferreira          | `00000000-0000-0000-0002-000000000002` |
-| ACM2A02 | Daily    | Fernanda Souza Ribeiro   | `00000000-0000-0000-0002-000000000003` |
-| ABC1D23 | Gol      | João Silva               | `00000000-0000-0000-0002-000000000004` |
-| DEF3G45 | Onix     | Maria Souza              | `00000000-0000-0000-0002-000000000005` |
-| ACM1A01 | Sprinter | Transportadora ACME LTDA | `00000000-0000-0000-0002-000000000006` |
+| LIM4H56 | Civic    | Ana Lima                 | `00000000-0000-4002-8000-000000000001` |
+| ABC2D34 | Uno      | Carlos Ferreira          | `00000000-0000-4002-8000-000000000002` |
+| ACM2A02 | Daily    | Fernanda Souza Ribeiro   | `00000000-0000-4002-8000-000000000003` |
+| ABC1D23 | Gol      | João Silva               | `00000000-0000-4002-8000-000000000004` |
+| DEF3G45 | Onix     | Maria Souza              | `00000000-0000-4002-8000-000000000005` |
+| ACM1A01 | Sprinter | Transportadora ACME LTDA | `00000000-0000-4002-8000-000000000006` |
 
 ### Serviços
 
 | Nome               | Valor     | ID                                     |
 |--------------------|-----------|----------------------------------------|
-| Alinhamento        | R$ 90,00  | `00000000-0000-0000-0003-000000000001` |
-| Balanceamento      | R$ 80,00  | `00000000-0000-0000-0003-000000000002` |
-| Limpeza de bicos   | R$ 160,00 | `00000000-0000-0000-0003-000000000003` |
-| Revisão geral      | R$ 600,00 | `00000000-0000-0000-0003-000000000004` |
-| Troca de pastilhas | R$ 250,00 | `00000000-0000-0000-0003-000000000005` |
-| Troca de óleo      | R$ 120,50 | `00000000-0000-0000-0003-000000000006` |
+| Alinhamento        | R$ 90,00  | `00000000-0000-4003-8000-000000000001` |
+| Balanceamento      | R$ 80,00  | `00000000-0000-4003-8000-000000000002` |
+| Limpeza de bicos   | R$ 160,00 | `00000000-0000-4003-8000-000000000003` |
+| Revisão geral      | R$ 600,00 | `00000000-0000-4003-8000-000000000004` |
+| Troca de pastilhas | R$ 250,00 | `00000000-0000-4003-8000-000000000005` |
+| Troca de óleo      | R$ 120,50 | `00000000-0000-4003-8000-000000000006` |
 
 ### Insumos
 
 | Código  | Nome                        | Tipo   | Valor     | ID                                     |
 |---------|-----------------------------|--------|-----------|----------------------------------------|
-| INS-001 | Óleo 5W30 1L                | INSUMO | R$ 45,00  | `00000000-0000-0000-0004-000000000001` |
-| PEC-001 | Filtro de óleo              | PECA   | R$ 35,90  | `00000000-0000-0000-0004-000000000002` |
-| PEC-002 | Pastilha de freio dianteira | PECA   | R$ 180,00 | `00000000-0000-0000-0004-000000000003` |
-| PEC-003 | Correia dentada             | PECA   | R$ 220,00 | `00000000-0000-0000-0004-000000000004` |
-| PEC-004 | Pneu aro 15                 | PECA   | R$ 420,00 | `00000000-0000-0000-0004-000000000005` |
-| PEC-005 | Bateria de 60Ah             | PECA   | R$ 650,75 | `00000000-0000-0000-0004-000000000006` |
+| INS-001 | Óleo 5W30 1L                | INSUMO | R$ 45,00  | `00000000-0000-4004-8000-000000000001` |
+| PEC-001 | Filtro de óleo              | PECA   | R$ 35,90  | `00000000-0000-4004-8000-000000000002` |
+| PEC-002 | Pastilha de freio dianteira | PECA   | R$ 180,00 | `00000000-0000-4004-8000-000000000003` |
+| PEC-003 | Correia dentada             | PECA   | R$ 220,00 | `00000000-0000-4004-8000-000000000004` |
+| PEC-004 | Pneu aro 15                 | PECA   | R$ 420,00 | `00000000-0000-4004-8000-000000000005` |
+| PEC-005 | Bateria de 60Ah             | PECA   | R$ 650,75 | `00000000-0000-4004-8000-000000000006` |
 
 ---
 
@@ -156,8 +156,8 @@ Exemplo usando **João Silva** e o **Gol**:
 **`POST /api/ordens-de-servico`** _(perfil: ATENDENTE ou ADMINISTRADOR)_
 ```json
 {
-  "clienteId": "00000000-0000-0000-0001-000000000004",
-  "veiculoId": "00000000-0000-0000-0002-000000000004",
+  "clienteId": "00000000-0000-4001-8000-000000000004",
+  "veiculoId": "00000000-0000-4002-8000-000000000004",
   "observacoes": "Cliente relata barulho ao frear e consumo alto de combustível"
 }
 ```
@@ -175,7 +175,7 @@ Adicionando **Troca de pastilhas** (serviço):
 ```json
 {
   "tipo": "SERVICO",
-  "servicoId": "00000000-0000-0000-0003-000000000005",
+  "servicoId": "00000000-0000-4003-8000-000000000005",
   "quantidade": 1
 }
 ```
@@ -184,7 +184,7 @@ Adicionando **Pastilha de freio dianteira** (insumo):
 ```json
 {
   "tipo": "INSUMO",
-  "insumoId": "00000000-0000-0000-0004-000000000003",
+  "insumoId": "00000000-0000-4004-8000-000000000003",
   "quantidade": 1
 }
 ```
@@ -193,7 +193,7 @@ Adicionando **Limpeza de bicos** (serviço):
 ```json
 {
   "tipo": "SERVICO",
-  "servicoId": "00000000-0000-0000-0003-000000000003",
+  "servicoId": "00000000-0000-4003-8000-000000000003",
   "quantidade": 1
 }
 ```
@@ -272,14 +272,14 @@ Se o cliente reprovar, a OS vai para `REPROVADA` e o fluxo encerra. Se aprovar, 
 A OS **precisa estar em `EM_EXECUCAO`**. Exemplo com Pedro Mecânico:
 ```json
 {
-  "servicoId": "00000000-0000-0000-0003-000000000005",
-  "mecanicoId": "00000000-0000-0000-0000-000000000003",
+  "servicoId": "00000000-0000-4003-8000-000000000005",
+  "mecanicoId": "00000000-0000-4000-8000-000000000003",
   "inicio": "2026-04-27T13:00:00.000Z",
   "fim": "2026-04-27T14:30:00.000Z",
   "observacoes": "Pastilhas trocadas, sistema de freios testado",
   "insumosUtilizados": [
     {
-      "insumoId": "00000000-0000-0000-0004-000000000003",
+      "insumoId": "00000000-0000-4004-8000-000000000003",
       "quantidade": 1
     }
   ]
