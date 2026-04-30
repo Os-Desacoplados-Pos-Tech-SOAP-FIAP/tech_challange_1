@@ -30,6 +30,27 @@ Bounded contexts: **cliente**, **veículo**, **serviço**, **insumo** e **ordem-
 
 Guards globais (`JwtAuthGuard` + `RolesGuard`) deixam todas as rotas autenticadas por padrão — exceções são marcadas com `@Public()` e o controle por perfil usa `@Roles(PerfilAcesso.X)`. Violações de invariantes do domínio levantam `DomainError` e são traduzidas para **HTTP 422** pelo `DomainExceptionFilter`.
 
+## Justificativa Técnica — PostgreSQL
+
+O **PostgreSQL 15+** foi escolhido como banco de dados do sistema por aderência direta às características do domínio: a Ordem de Serviço é um agregado relacional que cruza cliente, veículo, serviços e peças, e operações como o fechamento da OS exigem atualizações atômicas (baixa de estoque, cálculo de orçamento e mudança de status em uma única transação).
+
+### Motivos da escolha
+
+1. **Transações ACID completas** — garantem que operações multi-entidade (fechar OS, baixar estoque, atualizar total) ocorram de forma atômica, com rollback automático em caso de falha.
+2. **Integridade referencial nativa** — Foreign Keys impedem, no nível do banco, estados inválidos como uma OS sem cliente ou referenciando peça inexistente, reforçando as invariantes do modelo DDD.
+3. **Precisão monetária com `DECIMAL`** — valores de peças, serviços e total da OS são armazenados sem erros de arredondamento, ao contrário do que ocorreria com `FLOAT`.
+4. **Enums nativos** — o ciclo de vida da OS (`RECEBIDA`, `EM_EXECUCAO`, `FINALIZADA`, etc.) é restrito no banco, prevenindo valores inválidos.
+5. **Consultas analíticas robustas** — funções como `AVG` e `EXTRACT` atendem nativamente ao requisito de monitoramento de tempo médio de execução, sem ferramentas externas.
+6. **Integração de primeira classe com Prisma ORM** — migrações automáticas, type safety com TypeScript e `prisma.$transaction` alinhado às garantias ACID.
+
+### Por que não as alternativas
+
+- **MongoDB**: o domínio é fortemente relacional (5+ entidades por OS); `$lookup` e a ausência de FKs nativas tornariam o modelo frágil e mais lento.
+- **MySQL**: viável, porém o PostgreSQL oferece melhor suporte a tipos avançados, conformidade SQL mais rigorosa e performance superior em queries analíticas.
+- **SQLite**: inadequado para concorrência e produção.
+
+A escolha garante consistência transacional, integridade dos dados e alinhamento direto com o modelo de domínio definido.
+
 ## Como iniciar o projeto
 
 ### Opção A — Docker (recomendada)
@@ -80,6 +101,7 @@ Recursos auxiliares:
 - **Swagger interativo** em `/api/docs` — explore e teste as rotas direto no navegador.
 - **Coleção HTTP** em [`docs/oficina.http`](docs/oficina.http) — exemplos prontos para o REST Client (VS Code/JetBrains).
 - **Diagrama entidade-relacional** em [`docs/diagrama-entidade-relacional.md`](docs/diagrama-entidade-relacional.md).
+- **Relatório de scan de vulnerabilidades** em [`docs/scan-report.html`](docs/scan-report.html) — auditoria de segurança das dependências do projeto.
 
 ## Testes
 
