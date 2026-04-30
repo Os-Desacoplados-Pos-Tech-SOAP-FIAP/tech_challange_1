@@ -164,6 +164,29 @@ Cada bounded context tem esta organização dentro de `src/domain/`:
 
 A camada de `application/` espelha a estrutura de contextos, com um subdiretório por use case.
 
+## Relatório de Vulnerabilidades
+
+Análise de segurança realizada via **Snyk** e **npm audit**.
+
+O relatório completo está disponível em:
+
+```
+snyk-report.html
+```
+
+Abra o arquivo no navegador para visualizar todas as vulnerabilidades identificadas, severidade, CVEs e sugestões de correção.
+
+**Resumo (gerado em 30/04/2026):**
+
+| Severidade | Quantidade |
+|------------|-----------|
+| Critical   | 0         |
+| High       | 6         |
+| Medium     | 6         |
+| Low        | 0         |
+
+As vulnerabilidades de alta severidade estão restritas a dependências transitivas do NestJS (`multer`, `lodash`) e possuem correção disponível via atualização de versão — planejada para após a entrega do MVP.
+
 ## Licença
 
 Projeto acadêmico — parte do curso de Pós-graduação em Arquitetura de Software.
