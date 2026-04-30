@@ -32,6 +32,11 @@ export class RegistrarUsuarioUseCase {
       throw new BadRequestException('Dados obrigatórios ausentes');
     }
 
+    const totalUsuarios = await this.prisma.usuario.count();
+    if (totalUsuarios > 0 && input.solicitantePerfil !== PerfilAcesso.ADMINISTRADOR) {
+      throw new ForbiddenException('Apenas administradores podem registrar novos usuários');
+    }
+
     const existente = await this.prisma.usuario.findUnique({ where: { email: input.email } });
     if (existente) {
       throw new ConflictException('E-mail já cadastrado');
