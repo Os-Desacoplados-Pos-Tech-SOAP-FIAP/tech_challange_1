@@ -202,8 +202,7 @@ Content-Type: application/json
   "nome": "Fluido de freio DOT 4",
   "tipo": "INSUMO",
   "valorUnitario": 28.50,
-  "quantidadeEstoque": 40,
-  "estoqueMinimo": 8
+  "quantidadeEstoque": 40
 }
 
 ###
@@ -214,8 +213,7 @@ Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "quantidade": 50,
-  "minimo": 5
+  "quantidade": 50
 }
 
 
@@ -263,6 +261,8 @@ Authorization: Bearer {{atendenteToken}}
 ### ==============================================================
 ### SEÇÃO 4 — ITENS DO ORÇAMENTO
 ### Status atual: RECEBIDA → EM_DIAGNOSTICO (automático no 1º item)
+### Itens duplicados (mesmo tipo + referenciaId) são mesclados:
+### a quantidade é somada ao item já existente.
 ### ==============================================================
 
 ### 4.1 Adicionar serviço: Troca de pastilhas
@@ -308,7 +308,23 @@ Content-Type: application/json
 
 ###
 
-### 4.4 Buscar OS para obter IDs dos itens de orçamento
+### 4.4 Adicionar o MESMO insumo novamente (demonstra merge)
+# Como já existe item com tipo=INSUMO + insumoId={{insPastilha}},
+# o backend NÃO cria um novo item: ele incrementa a quantidade do
+# item existente (passa de 1 para 2). itensOrcamento continua com 3 itens.
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "INSUMO",
+  "insumoId": "{{insPastilha}}",
+  "quantidade": 1
+}
+
+###
+
+### 4.5 Buscar OS para obter IDs dos itens de orçamento
 # Execute esta request ANTES da seção 7 (execução)
 # Os IDs dos itens aparecem em itensOrcamento[].id
 # @name getOS
@@ -347,6 +363,7 @@ GET {{baseUrl}}/publico/os/{{osNumero}}/status
 # Substitua TOKEN_DO_EMAIL pelo token recebido no email
 # Ou consulte a tabela OrcamentoToken no banco:
 # SELECT token FROM "OrcamentoToken" ORDER BY "criadoEm" DESC LIMIT 1;
+# Token já utilizado retorna 401 Unauthorized.
 @orcamentoToken = 483e38a9-52d8-4dbe-9b40-ab5427d79584
 
 GET {{baseUrl}}/publico/os/{{osNumero}}/orcamento?token={{orcamentoToken}}
@@ -355,6 +372,7 @@ GET {{baseUrl}}/publico/os/{{osNumero}}/orcamento?token={{orcamentoToken}}
 
 ### 6.3 Cliente aprova o orçamento
 # Automático: OS passa de AGUARDANDO_APROVACAO → APROVADA
+# Reenviar a decisão com o mesmo token retorna 401 Unauthorized.
 # @name aprovacaoCliente
 POST {{baseUrl}}/publico/os/{{osNumero}}/orcamento/decisao
 Content-Type: application/json
@@ -383,7 +401,7 @@ Content-Type: application/json
 ### Status atual: APROVADA → EM_EXECUCAO (automático na 1ª execução)
 ### ==============================================================
 ###
-### IMPORTANTE: Execute a request 4.4 (getOS) antes desta seção
+### IMPORTANTE: Execute a request 4.5 (getOS) antes desta seção
 ### para popular @itemId1 e @itemId2 com os IDs corretos.
 ###
 ### Cada item SERVICO requer 2 chamadas:
