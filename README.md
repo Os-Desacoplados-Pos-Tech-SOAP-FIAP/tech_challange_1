@@ -1,192 +1,107 @@
 # Tech Challenge — Sistema de Oficina Mecânica
 
-Back-end do MVP de um **Sistema Integrado de Atendimento e Execução de Serviços Automotivos**, desenvolvido em **NestJS** com arquitetura em **Domain-Driven Design (DDD)**.
+Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Atendimento e Execução de Serviços Automotivos**, organizado em **Domain-Driven Design (DDD)**.
 
-## Stack
+## Tecnologias
 
-- **Node.js 20+** / **TypeScript** (strict)
+- **Node.js 20** / **TypeScript 5** (strict)
 - **NestJS 10** — framework modular
-- **PostgreSQL 16** + **Prisma** ORM
+- **PostgreSQL 16** + **Prisma 5**
 - **JWT** (`@nestjs/jwt` + Passport) + **bcryptjs**
 - **class-validator** / **class-transformer**
 - **Swagger** (`@nestjs/swagger`)
-- **Jest** + **supertest**
+- **Jest** + **Supertest**
 - **Docker** / **Docker Compose**
 
 ## Arquitetura
 
-Monolito modular com separação clara em camadas:
+Monolito modular DDD com dependência estritamente para dentro: `modules → application → domain` e `infrastructure → domain` (o domínio não conhece NestJS nem Prisma).
 
 ```
 src/
-├── domain/           # Entidades, VOs, eventos, interfaces de repositório, domain services (puro, sem NestJS)
+├── domain/           # Entidades, value objects, eventos e interfaces de repositório (puro)
 ├── application/      # Use cases (@Injectable) que orquestram o domínio
-├── infrastructure/   # PrismaService, implementações de repositórios, auth (JWT, bcrypt)
-├── modules/          # Módulos NestJS: controllers + DTOs + binding de providers
+├── infrastructure/   # PrismaService, repositórios, auth (JWT, bcrypt), eventos
+├── modules/          # Módulos NestJS: controllers, DTOs e wiring de providers
 └── common/           # Guards, decorators, filters, interceptors, tokens de DI
 ```
 
-**Injeção de dependência:** interfaces de repositório no domínio; binding via `Symbol` tokens definidos em `src/common/constants/injection-tokens.ts` e registrados no `InfrastructureModule` (`@Global()`).
+Bounded contexts: **cliente**, **veículo**, **serviço**, **insumo** e **ordem-de-servico** (agregado raiz com `ItemOrcamento` e `ExecucaoDeServico`).
 
-**Autorização global:** `JwtAuthGuard` + `RolesGuard` registrados via `APP_GUARD` em `app.module.ts`. Rotas públicas anotadas com `@Public()`. Controle por perfil via `@Roles(PerfilAcesso.X)`.
+Guards globais (`JwtAuthGuard` + `RolesGuard`) deixam todas as rotas autenticadas por padrão — exceções são marcadas com `@Public()` e o controle por perfil usa `@Roles(PerfilAcesso.X)`. Violações de invariantes do domínio levantam `DomainError` e são traduzidas para **HTTP 422** pelo `DomainExceptionFilter`.
 
-**Erros de domínio:** `DomainError` é capturado por `DomainExceptionFilter` e retorna **HTTP 422**. Exceções do NestJS (401/403/404/409) são respeitadas. Fallback catch-all em `AllExceptionsFilter` → 500.
+## Como iniciar o projeto
 
-## Domínio
-
-Agregados:
-
-- **Cliente** (PF/PJ com CPF ou CNPJ)
-- **Veículo** (placa Mercosul ou antiga)
-- **Serviço** (catálogo com valor padrão)
-- **PeçaInsumo** (com estoque e baixa)
-- **Ordem de Serviço (OS)** — Aggregate Root com `ItemOrcamento[]` e `ExecucaoDeServico[]`
-
-Ciclo de status da OS:
-
-```
-RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA → ENTREGUE
-                                   ↓ (recusa total)
-                               CANCELADA
-                                   ↓ (recusa parcial)
-                            volta para EM_DIAGNOSTICO
-```
-
-Transições inválidas levantam `DomainError` (regra encapsulada em `StatusOS.transicionar()` + `TransicaoStatusService`).
-
-## Como executar
-
-### Com Docker (recomendado)
+### Opção A — Docker (recomendada)
 
 ```bash
 cp .env.example .env
-docker-compose up --build -d
+npm run docker:up
 ```
 
-- API em: http://localhost:3000/api
+O container `api` aplica `prisma migrate deploy` e roda o seed automaticamente na subida.
+
+- API: http://localhost:3000/api
 - Swagger: http://localhost:3000/api/docs
 - Postgres: `localhost:5432` (user: `oficina`, senha: `oficina123`)
 
-Rodar o seed para criar o administrador inicial:
+### Opção B — Local
 
 ```bash
-docker-compose exec api node -e "require('./dist/src/infrastructure/database/prisma/seed.js')" || true
+npm install
+cp .env.example .env
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run start:dev
 ```
 
-> Alternativamente, sem Docker:
-> ```bash
-> npm install
-> npm run prisma:generate
-> npm run prisma:migrate
-> npm run prisma:seed
-> npm run start:dev
-> ```
+### Variáveis de ambiente
 
-### Primeiros passos via Swagger
+Definidas em `.env.example`: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` (padrão `8h`), `PORT` (padrão `3000`), `NODE_ENV`.
 
-1. `POST /api/auth/registrar` — primeiro usuário é livre (crie um Administrador).
-2. `POST /api/auth/login` — pegue o `accessToken`.
-3. Clique em **Authorize** no Swagger e informe `Bearer <token>`.
-4. Use as rotas de Clientes, Veículos, Serviços, Peças e Ordens de Serviço.
+### Usuários criados pelo seed
 
-## Perfis e permissões
+| Email                       | Perfil          | Senha       |
+|-----------------------------|-----------------|-------------|
+| `admin@oficina.local`       | ADMINISTRADOR   | `admin123`  |
+| `atendente@oficina.local`   | ATENDENTE       | `senha123`  |
+| `mecanico1@oficina.local`   | MECANICO        | `senha123`  |
+| `mecanico2@oficina.local`   | MECANICO        | `senha123`  |
 
-| Perfil         | Pode                                                              |
-|----------------|-------------------------------------------------------------------|
-| ADMINISTRADOR  | tudo, incluindo catálogo de serviços/peças e métricas             |
-| ATENDENTE      | clientes, veículos, criar OS, aprovar/recusar orçamento           |
-| MECANICO       | peças (consulta/baixa), registrar execuções, avançar status da OS |
+O seed também popula clientes, veículos, serviços, insumos e ordens de serviço de exemplo (uma em cada status) para facilitar testes manuais.
 
-## Endpoints principais
+## Fluxo de uso da API
 
-### Público
-- `GET /api/publico/os/:numero/status` — consulta de status pelo cliente (sem auth)
-- `POST /api/auth/login` / `POST /api/auth/registrar`
+O passo a passo completo de uso da API ponta a ponta — autenticação, cadastros, criação da OS, aprovação do orçamento, execução e entrega — está documentado em **[`docs/fluxo-completo.pdf`](docs/fluxo-completo.pdf)**. Comece por ele para entender a sequência esperada de chamadas e os perfis envolvidos em cada etapa.
 
-### Administrativos (JWT)
-- `POST/GET/PUT/DELETE /api/clientes`
-- `POST/GET/PUT/DELETE /api/veiculos`
-- `POST/GET/PUT/DELETE /api/servicos`
-- `POST/GET/PATCH /api/pecas` + `PATCH /api/pecas/:id/estoque`
-- `POST/GET /api/ordens-de-servico`
-- `PATCH /api/ordens-de-servico/:id/status`
-- `POST /api/ordens-de-servico/:id/aprovar`
-- `POST /api/ordens-de-servico/:id/recusar`
-- `POST /api/ordens-de-servico/:id/execucoes`
-- `GET /api/ordens-de-servico/metricas/tempo-medio`
+Recursos auxiliares:
+
+- **Swagger interativo** em `/api/docs` — explore e teste as rotas direto no navegador.
+- **Coleção HTTP** em [`docs/oficina.http`](docs/oficina.http) — exemplos prontos para o REST Client (VS Code/JetBrains).
+- **Diagrama entidade-relacional** em [`docs/diagrama-entidade-relacional.md`](docs/diagrama-entidade-relacional.md).
 
 ## Testes
 
 ```bash
-npm test              # unitários
-npm run test:cov      # cobertura (mínimo 80% em domain e application)
-npm run test:e2e      # end-to-end (via TestingModule + Prisma mock)
+npm test           # unitários (*.spec.ts em src/)
+npm run test:cov   # cobertura — mínimo 80% em domain e application
+npm run test:e2e   # end-to-end com PrismaService mockado em memória (não exige DB)
 ```
-
-Os testes **unitários** cobrem Value Objects (CPF, CNPJ, Placa, Email, StatusOS), Domain Services (BaixaEstoqueService) e Use Cases (CadastrarClienteUseCase, CriarOSUseCase).
-
-Os testes **e2e** sobem o `AppModule` inteiro com um `PrismaService` mockado em memória — não exigem banco rodando.
 
 ## Scripts úteis
 
 ```bash
-npm run build             # compila com nest build
-npm run start:dev         # dev com watch
-npm run prisma:generate   # gera client
-npm run prisma:migrate    # cria migração em dev
-npm run prisma:seed       # cria usuário admin
+npm run start:dev         # API com watch
+npm run build             # nest build → dist/
+npm run lint              # eslint --fix
+npm run prisma:generate   # gera o client após alterar schema.prisma
+npm run prisma:migrate    # cria nova migração em dev
+npm run prisma:seed       # popula dados iniciais
 npm run docker:up         # docker-compose up --build -d
 npm run docker:down       # docker-compose down
 ```
 
-## Variáveis de ambiente
-
-Veja `.env.example`:
-
-- `DATABASE_URL` — string de conexão Postgres
-- `JWT_SECRET` — segredo para assinatura do token
-- `JWT_EXPIRES_IN` — tempo de expiração (padrão: `8h`)
-- `PORT` — porta da API (padrão: `3000`)
-- `NODE_ENV` — `development` | `production`
-
-## Estrutura DDD detalhada
-
-Cada bounded context tem esta organização dentro de `src/domain/`:
-
-```
-<contexto>/
-├── entities/          # Aggregate root e entidades
-├── value-objects/     # VOs imutáveis com validação
-├── repositories/      # Interfaces (ports)
-├── events/            # Domain events
-└── services/          # Domain services (opcional)
-```
-
-A camada de `application/` espelha a estrutura de contextos, com um subdiretório por use case.
-
-## Relatório de Vulnerabilidades
-
-Análise de segurança realizada via **Snyk** e **npm audit**.
-
-O relatório completo está disponível em:
-
-```
-snyk-report.html
-```
-
-Abra o arquivo no navegador para visualizar todas as vulnerabilidades identificadas, severidade, CVEs e sugestões de correção.
-
-**Resumo (gerado em 30/04/2026):**
-
-| Severidade | Quantidade |
-|------------|-----------|
-| Critical   | 0         |
-| High       | 6         |
-| Medium     | 6         |
-| Low        | 0         |
-
-As vulnerabilidades de alta severidade estão restritas a dependências transitivas do NestJS (`multer`, `lodash`) e possuem correção disponível via atualização de versão — planejada para após a entrega do MVP.
-
 ## Licença
 
-Projeto acadêmico — parte do curso de Pós-graduação em Arquitetura de Software.
+Projeto acadêmico — Pós-graduação em Arquitetura de Software (FIAP).
