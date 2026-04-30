@@ -51,7 +51,6 @@ erDiagram
         Decimal valorUnitario
         Int quantidadeEstoque
         Int quantidadeReservada
-        Int estoqueMinimo
         DateTime criadoEm
         DateTime atualizadoEm
     }
@@ -83,7 +82,7 @@ erDiagram
     ExecucaoDeServico {
         String id PK
         String ordemDeServicoId FK
-        String itemOrcamentoId FK
+        String itemOrcamentoId FK,UK
         String servicoId
         String mecanicoId
         DateTime inicio
