@@ -1,0 +1,109 @@
+erDiagram
+
+    Cliente {
+        String id PK
+        TipoCliente tipo
+        String documento UK
+        String nome
+        String email
+        String telefone
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    Veiculo {
+        String id PK
+        String placa UK
+        String marca
+        String modelo
+        Int ano
+        String clienteId FK
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    Usuario {
+        String id PK
+        String nome
+        String email UK
+        String senha
+        PerfilAcesso perfil
+        Boolean ativo
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    Servico {
+        String id PK
+        String nome
+        String descricao
+        Decimal valorPadrao
+        Boolean ativo
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    Insumo {
+        String id PK
+        String codigo UK
+        String nome
+        TipoInsumo tipo
+        Decimal valorUnitario
+        Int quantidadeEstoque
+        Int quantidadeReservada
+        Int estoqueMinimo
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    OrdemDeServico {
+        String id PK
+        Int numero UK
+        String clienteId FK
+        String veiculoId FK
+        StatusOS status
+        Decimal valorEstimado
+        String observacoes
+        DateTime criadoEm
+        DateTime atualizadoEm
+    }
+
+    ItemOrcamento {
+        String id PK
+        String ordemDeServicoId FK
+        TipoItemOrcamento tipo
+        String referenciaId
+        String descricao
+        Int quantidade
+        Decimal valorUnitario
+        Decimal valorTotal
+        DateTime criadoEm
+    }
+
+    ExecucaoDeServico {
+        String id PK
+        String ordemDeServicoId FK
+        String itemOrcamentoId FK
+        String servicoId
+        String mecanicoId
+        DateTime inicio
+        DateTime fim
+        Int tempoExecucaoMinutos
+        DateTime criadoEm
+    }
+
+    OrcamentoToken {
+        String id PK
+        String ordemDeServicoId
+        String token UK
+        Boolean usado
+        DateTime criadoEm
+        DateTime usadoEm
+    }
+
+    Cliente ||--o{ Veiculo : "possui"
+    Cliente ||--o{ OrdemDeServico : "solicita"
+    Veiculo ||--o{ OrdemDeServico : "é atendido em"
+    OrdemDeServico ||--o{ ItemOrcamento : "contém"
+    OrdemDeServico ||--o{ ExecucaoDeServico : "gera"
+    ItemOrcamento ||--o| ExecucaoDeServico : "origina"
