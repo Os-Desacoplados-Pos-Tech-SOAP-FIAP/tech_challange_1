@@ -1,5 +1,6 @@
 {
    "compilerOptions": {
+      "types": ["node", "jest"],
       "ignoreDeprecations": "5.0",
       "module": "commonjs",
       "declaration": true,

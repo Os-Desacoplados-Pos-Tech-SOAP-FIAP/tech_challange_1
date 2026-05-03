@@ -116,4 +116,25 @@ describe('CriarOSUseCase', () => {
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('falha se veículo não pertencer ao cliente informado', async () => {
+    const outroCliente = Cliente.criar({
+      tipo: TipoCliente.PF,
+      documento: '39053344705',
+      nome: 'Outro Cliente',
+      email: 'outro@teste.com',
+    });
+    const useCase2 = new CriarOSUseCase(
+      new InMemoryOSRepository(),
+      new InMemoryClienteRepository([cliente, outroCliente]),
+      new InMemoryVeiculoRepository([veiculo]),
+    );
+
+    await expect(
+      useCase2.execute({
+        clienteId: outroCliente.id.toValue(),
+        veiculoId: veiculo.id.toValue(),
+      }),
+    ).rejects.toMatchObject({ code: 'VEICULO_NAO_PERTENCE_AO_CLIENTE' });
+  });
 });
