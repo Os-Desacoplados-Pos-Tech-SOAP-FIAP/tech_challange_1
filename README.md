@@ -13,23 +13,6 @@ Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Aten
 - **Jest** + **Supertest**
 - **Docker** / **Docker Compose**
 
-## Arquitetura
-
-Monolito modular DDD com dependência estritamente para dentro: `modules → application → domain` e `infrastructure → domain` (o domínio não conhece NestJS nem Prisma).
-
-```
-src/
-├── domain/           # Entidades, value objects, eventos e interfaces de repositório (puro)
-├── application/      # Use cases (@Injectable) que orquestram o domínio
-├── infrastructure/   # PrismaService, repositórios, auth (JWT, bcrypt), eventos
-├── modules/          # Módulos NestJS: controllers, DTOs e wiring de providers
-└── common/           # Guards, decorators, filters, interceptors, tokens de DI
-```
-
-Bounded contexts: **cliente**, **veículo**, **serviço**, **insumo** e **ordem-de-servico** (agregado raiz com `ItemOrcamento` e `ExecucaoDeServico`).
-
-Guards globais (`JwtAuthGuard` + `RolesGuard`) deixam todas as rotas autenticadas por padrão — exceções são marcadas com `@Public()` e o controle por perfil usa `@Roles(PerfilAcesso.X)`. Violações de invariantes do domínio levantam `DomainError` e são traduzidas para **HTTP 422** pelo `DomainExceptionFilter`.
-
 ## Justificativa Técnica — PostgreSQL
 
 O **PostgreSQL 15+** foi escolhido como banco de dados do sistema por aderência direta às características do domínio: a Ordem de Serviço é um agregado relacional que cruza cliente, veículo, serviços e peças, e operações como o fechamento da OS exigem atualizações atômicas (baixa de estoque, cálculo de orçamento e mudança de status em uma única transação).
@@ -50,6 +33,23 @@ O **PostgreSQL 15+** foi escolhido como banco de dados do sistema por aderência
 - **SQLite**: inadequado para concorrência e produção.
 
 A escolha garante consistência transacional, integridade dos dados e alinhamento direto com o modelo de domínio definido.
+
+## Arquitetura
+
+Monolito modular DDD com dependência estritamente para dentro: `modules → application → domain` e `infrastructure → domain` (o domínio não conhece NestJS nem Prisma).
+
+```
+src/
+├── domain/           # Entidades, value objects, eventos e interfaces de repositório (puro)
+├── application/      # Use cases (@Injectable) que orquestram o domínio
+├── infrastructure/   # PrismaService, repositórios, auth (JWT, bcrypt), eventos
+├── modules/          # Módulos NestJS: controllers, DTOs e wiring de providers
+└── common/           # Guards, decorators, filters, interceptors, tokens de DI
+```
+
+Bounded contexts: **cliente**, **veículo**, **serviço**, **insumo** e **ordem-de-servico** (agregado raiz com `ItemOrcamento` e `ExecucaoDeServico`).
+
+Guards globais (`JwtAuthGuard` + `RolesGuard`) deixam todas as rotas autenticadas por padrão — exceções são marcadas com `@Public()` e o controle por perfil usa `@Roles(PerfilAcesso.X)`. Violações de invariantes do domínio levantam `DomainError` e são traduzidas para **HTTP 422** pelo `DomainExceptionFilter`.
 
 ## Como iniciar o projeto
 
@@ -83,12 +83,12 @@ Definidas em `.env.example`: `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` (pad
 
 ### Usuários criados pelo seed
 
-| Email                       | Perfil          | Senha       |
-|-----------------------------|-----------------|-------------|
-| `admin@oficina.local`       | ADMINISTRADOR   | `admin123`  |
-| `atendente@oficina.local`   | ATENDENTE       | `senha123`  |
-| `mecanico1@oficina.local`   | MECANICO        | `senha123`  |
-| `mecanico2@oficina.local`   | MECANICO        | `senha123`  |
+| Email                     | Perfil        | Senha      |
+| ------------------------- | ------------- | ---------- |
+| `admin@oficina.local`     | ADMINISTRADOR | `admin123` |
+| `atendente@oficina.local` | ATENDENTE     | `senha123` |
+| `mecanico1@oficina.local` | MECANICO      | `senha123` |
+| `mecanico2@oficina.local` | MECANICO      | `senha123` |
 
 O seed também popula clientes, veículos, serviços, insumos e ordens de serviço de exemplo (uma em cada status) para facilitar testes manuais.
 
