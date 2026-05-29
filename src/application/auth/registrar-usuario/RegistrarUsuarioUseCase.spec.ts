@@ -1,23 +1,20 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { PerfilAcesso } from '@prisma/client';
+import { PerfilAcesso as PerfilAcessoPrisma } from '@prisma/client';
 
+import { Usuario } from '../../../domain/auth/entities/Usuario';
+import { IUsuarioRepository } from '../../../domain/auth/repositories/IUsuarioRepository';
+import { PerfilAcesso } from '../../../domain/auth/value-objects/PerfilAcesso';
 import { RegistrarUsuarioUseCase } from './RegistrarUsuarioUseCase';
 
-const makeUsuarioCriado = (overrides = {}) => ({
-  id: 'new-id',
-  nome: 'Novo',
-  email: 'novo@email.com',
-  perfil: PerfilAcesso.ATENDENTE,
-  ...overrides,
-});
+class InMemoryUsuarioRepository implements IUsuarioRepository {
+  public usuarios: Usuario[] = [];
+  async contar() { return this.usuarios.length; }
+  async buscarPorEmail(email: string) { return this.usuarios.find((u) => u.email === email) ?? null; }
+  async salvar(usuario: Usuario) { this.usuarios.push(usuario); }
+}
 
-const makePrisma = (count: number, existente: object | null, criado = makeUsuarioCriado()) => ({
-  usuario: {
-    count: jest.fn().mockResolvedValue(count),
-    findUnique: jest.fn().mockResolvedValue(existente),
-    create: jest.fn().mockResolvedValue(criado),
-  },
-});
+const seedUsuario = (email = 'existente@email.com') =>
+  Usuario.criar({ nome: 'Existente', email, senha: 'hashed', perfil: PerfilAcesso.ATENDENTE });
 
 const makeHashProvider = () => ({
   hash: jest.fn().mockResolvedValue('hashed'),
@@ -28,42 +25,47 @@ const input = {
   nome: 'Novo Usuário',
   email: 'novo@email.com',
   senha: 'senha123',
-  perfil: PerfilAcesso.ATENDENTE,
+  perfil: PerfilAcessoPrisma.ATENDENTE,
 };
 
 describe('RegistrarUsuarioUseCase', () => {
   it('registra primeiro usuário sem autenticação', async () => {
-    const prisma = makePrisma(0, null);
-    const useCase = new RegistrarUsuarioUseCase(prisma as any, makeHashProvider());
+    const repo = new InMemoryUsuarioRepository();
+    const useCase = new RegistrarUsuarioUseCase(repo, makeHashProvider());
     const result = await useCase.execute(input);
     expect(result.email).toBe('novo@email.com');
+    expect(result.perfil).toBe(PerfilAcessoPrisma.ATENDENTE);
+    expect(repo.usuarios).toHaveLength(1);
   });
 
   it('lança ForbiddenException se não for admin registrando depois do primeiro', async () => {
-    const prisma = makePrisma(1, null);
-    const useCase = new RegistrarUsuarioUseCase(prisma as any, makeHashProvider());
-    await expect(useCase.execute({ ...input, solicitantePerfil: PerfilAcesso.MECANICO }))
+    const repo = new InMemoryUsuarioRepository();
+    repo.usuarios.push(seedUsuario());
+    const useCase = new RegistrarUsuarioUseCase(repo, makeHashProvider());
+    await expect(useCase.execute({ ...input, solicitantePerfil: PerfilAcessoPrisma.MECANICO }))
       .rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('admin pode registrar novo usuário', async () => {
-    const prisma = makePrisma(1, null);
-    const useCase = new RegistrarUsuarioUseCase(prisma as any, makeHashProvider());
-    const result = await useCase.execute({ ...input, solicitantePerfil: PerfilAcesso.ADMINISTRADOR });
+    const repo = new InMemoryUsuarioRepository();
+    repo.usuarios.push(seedUsuario());
+    const useCase = new RegistrarUsuarioUseCase(repo, makeHashProvider());
+    const result = await useCase.execute({ ...input, solicitantePerfil: PerfilAcessoPrisma.ADMINISTRADOR });
     expect(result.email).toBe('novo@email.com');
   });
 
   it('lança ConflictException para email duplicado', async () => {
-    const prisma = makePrisma(1, makeUsuarioCriado());
-    const useCase = new RegistrarUsuarioUseCase(prisma as any, makeHashProvider());
-    await expect(useCase.execute({ ...input, solicitantePerfil: PerfilAcesso.ADMINISTRADOR }))
+    const repo = new InMemoryUsuarioRepository();
+    repo.usuarios.push(seedUsuario('novo@email.com'));
+    const useCase = new RegistrarUsuarioUseCase(repo, makeHashProvider());
+    await expect(useCase.execute({ ...input, solicitantePerfil: PerfilAcessoPrisma.ADMINISTRADOR }))
       .rejects.toBeInstanceOf(ConflictException);
   });
 
   it('lança BadRequestException para dados ausentes', async () => {
-    const prisma = makePrisma(0, null);
-    const useCase = new RegistrarUsuarioUseCase(prisma as any, makeHashProvider());
-    await expect(useCase.execute({ nome: '', email: '', senha: '', perfil: PerfilAcesso.ATENDENTE }))
+    const repo = new InMemoryUsuarioRepository();
+    const useCase = new RegistrarUsuarioUseCase(repo, makeHashProvider());
+    await expect(useCase.execute({ nome: '', email: '', senha: '', perfil: PerfilAcessoPrisma.ATENDENTE }))
       .rejects.toBeInstanceOf(BadRequestException);
   });
 });

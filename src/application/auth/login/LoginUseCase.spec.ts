@@ -1,23 +1,23 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { PerfilAcesso } from '@prisma/client';
+import { PerfilAcesso as PerfilAcessoPrisma } from '@prisma/client';
 
+import { Usuario } from '../../../domain/auth/entities/Usuario';
+import { IUsuarioRepository } from '../../../domain/auth/repositories/IUsuarioRepository';
+import { PerfilAcesso } from '../../../domain/auth/value-objects/PerfilAcesso';
 import { LoginUseCase } from './LoginUseCase';
 
-const makeUsuario = (overrides = {}) => ({
-  id: 'user-id',
-  nome: 'Admin',
-  email: 'admin@email.com',
-  senha: 'hashed',
-  perfil: PerfilAcesso.ADMINISTRADOR,
-  ativo: true,
-  ...overrides,
-});
+class InMemoryUsuarioRepository implements IUsuarioRepository {
+  public usuarios: Usuario[] = [];
+  async contar() { return this.usuarios.length; }
+  async buscarPorEmail(email: string) { return this.usuarios.find((u) => u.email === email) ?? null; }
+  async salvar(usuario: Usuario) { this.usuarios.push(usuario); }
+}
 
-const makePrisma = (usuario: object | null) => ({
-  usuario: {
-    findUnique: jest.fn().mockResolvedValue(usuario),
-  },
-});
+const makeRepo = (usuario?: Usuario) => {
+  const repo = new InMemoryUsuarioRepository();
+  if (usuario) repo.usuarios.push(usuario);
+  return repo;
+};
 
 const makeHashProvider = (matches: boolean) => ({
   hash: jest.fn(),
@@ -28,21 +28,30 @@ const makeJwtService = () => ({
   sign: jest.fn().mockReturnValue('jwt-token'),
 });
 
+const adminAtivo = () =>
+  Usuario.criar({
+    nome: 'Admin',
+    email: 'admin@email.com',
+    senha: 'hashed',
+    perfil: PerfilAcesso.ADMINISTRADOR,
+  });
+
 describe('LoginUseCase', () => {
   it('retorna accessToken com credenciais válidas', async () => {
     const useCase = new LoginUseCase(
-      makePrisma(makeUsuario()) as any,
+      makeRepo(adminAtivo()),
       makeJwtService() as any,
       makeHashProvider(true),
     );
     const result = await useCase.execute('admin@email.com', 'senha123');
     expect(result.accessToken).toBe('jwt-token');
     expect(result.usuario.email).toBe('admin@email.com');
+    expect(result.usuario.perfil).toBe(PerfilAcessoPrisma.ADMINISTRADOR);
   });
 
   it('lança UnauthorizedException para usuário inexistente', async () => {
     const useCase = new LoginUseCase(
-      makePrisma(null) as any,
+      makeRepo(),
       makeJwtService() as any,
       makeHashProvider(false),
     );
@@ -50,8 +59,18 @@ describe('LoginUseCase', () => {
   });
 
   it('lança UnauthorizedException para usuário inativo', async () => {
+    const inativo = Usuario.restaurar(
+      {
+        nome: 'Admin',
+        email: 'admin@email.com',
+        senha: 'hashed',
+        perfil: PerfilAcesso.ADMINISTRADOR,
+        ativo: false,
+      },
+      adminAtivo().id,
+    );
     const useCase = new LoginUseCase(
-      makePrisma(makeUsuario({ ativo: false })) as any,
+      makeRepo(inativo),
       makeJwtService() as any,
       makeHashProvider(true),
     );
@@ -60,7 +79,7 @@ describe('LoginUseCase', () => {
 
   it('lança UnauthorizedException para senha incorreta', async () => {
     const useCase = new LoginUseCase(
-      makePrisma(makeUsuario()) as any,
+      makeRepo(adminAtivo()),
       makeJwtService() as any,
       makeHashProvider(false),
     );

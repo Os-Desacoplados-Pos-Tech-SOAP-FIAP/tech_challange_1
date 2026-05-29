@@ -1,0 +1,5 @@
+export enum PerfilAcesso {
+  ADMINISTRADOR = 'ADMINISTRADOR',
+  ATENDENTE = 'ATENDENTE',
+  MECANICO = 'MECANICO',
+}
