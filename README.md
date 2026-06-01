@@ -51,6 +51,19 @@ Bounded contexts: **cliente**, **veículo**, **serviço**, **insumo** e **ordem-
 
 Guards globais (`JwtAuthGuard` + `RolesGuard`) deixam todas as rotas autenticadas por padrão — exceções são marcadas com `@Public()` e o controle por perfil usa `@Roles(PerfilAcesso.X)`. Violações de invariantes do domínio levantam `DomainError` e são traduzidas para **HTTP 422** pelo `DomainExceptionFilter`.
 
+### Notificações por email
+
+O envio de emails (ex.: link do orçamento para o cliente) passa pela interface `EmailProvider` (`src/infrastructure/email/EmailProvider.ts`), injetada via token `INJECTION_TOKENS.EMAIL_PROVIDER`. Na Fase 2 o binding aponta para `ConsoleEmailProvider`, um **mock** que apenas registra a mensagem no log.
+
+Para usar um provider real em produção (SMTP, AWS SES, etc.) **não é preciso tocar em `domain`/`application`**: implemente a interface `EmailProvider` numa nova classe e troque o binding em `InfrastructureModule`, selecionando-o por variável de ambiente. Por exemplo:
+
+```ts
+{
+  provide: INJECTION_TOKENS.EMAIL_PROVIDER,
+  useClass: process.env.EMAIL_PROVIDER === 'ses' ? SesEmailProvider : ConsoleEmailProvider,
+}
+```
+
 ## Como iniciar o projeto
 
 ### Opção A — Docker (recomendada)
