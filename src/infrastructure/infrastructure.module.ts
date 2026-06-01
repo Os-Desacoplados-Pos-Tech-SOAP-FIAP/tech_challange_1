@@ -9,6 +9,7 @@ import { PrismaInsumoRepository } from './repositories/PrismaInsumoRepository';
 import { PrismaOrcamentoTokenRepository } from './repositories/PrismaOrcamentoTokenRepository';
 import { PrismaOrdemDeServicoRepository } from './repositories/PrismaOrdemDeServicoRepository';
 import { PrismaServicoRepository } from './repositories/PrismaServicoRepository';
+import { PrismaUsuarioRepository } from './repositories/PrismaUsuarioRepository';
 import { PrismaVeiculoRepository } from './repositories/PrismaVeiculoRepository';
 
 const repositoryProviders = [
@@ -24,6 +25,7 @@ const repositoryProviders = [
     provide: INJECTION_TOKENS.ORCAMENTO_TOKEN_REPOSITORY,
     useClass: PrismaOrcamentoTokenRepository,
   },
+  { provide: INJECTION_TOKENS.USUARIO_REPOSITORY, useClass: PrismaUsuarioRepository },
   { provide: INJECTION_TOKENS.HASH_PROVIDER, useClass: BcryptHashProvider },
   { provide: INJECTION_TOKENS.EMAIL_PROVIDER, useClass: ConsoleEmailProvider },
 ];

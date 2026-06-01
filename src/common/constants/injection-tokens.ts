@@ -5,6 +5,7 @@ export const INJECTION_TOKENS = {
   SERVICO_REPOSITORY: Symbol('IServicoRepository'),
   INSUMO_REPOSITORY: Symbol('IInsumoRepository'),
   ORCAMENTO_TOKEN_REPOSITORY: Symbol('IOrcamentoTokenRepository'),
+  USUARIO_REPOSITORY: Symbol('IUsuarioRepository'),
   HASH_PROVIDER: Symbol('IHashProvider'),
   EMAIL_PROVIDER: Symbol('IEmailProvider'),
 } as const;

@@ -46,7 +46,26 @@ export function createPrismaMock() {
           email: data.email,
           senha: data.senha,
           perfil: data.perfil,
-          ativo: true,
+          ativo: data.ativo ?? true,
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        };
+        usuarios.push(usuario);
+        return usuario;
+      },
+      upsert: async ({ where, create, update }: any) => {
+        const idx = usuarios.findIndex((u) => u.id === where.id);
+        if (idx >= 0) {
+          usuarios[idx] = { ...usuarios[idx], ...update, atualizadoEm: new Date() };
+          return usuarios[idx];
+        }
+        const usuario: UsuarioMock = {
+          id: create.id ?? randomUUID(),
+          nome: create.nome,
+          email: create.email,
+          senha: create.senha,
+          perfil: create.perfil,
+          ativo: create.ativo ?? true,
           criadoEm: new Date(),
           atualizadoEm: new Date(),
         };

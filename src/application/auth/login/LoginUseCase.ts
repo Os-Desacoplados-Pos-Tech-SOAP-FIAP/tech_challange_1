@@ -3,8 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { PerfilAcesso } from '@prisma/client';
 
 import { INJECTION_TOKENS } from '../../../common/constants/injection-tokens';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { IUsuarioRepository } from '../../../domain/auth/repositories/IUsuarioRepository';
 import { IHashProvider } from '../../../infrastructure/auth/hash.provider';
+import { perfilParaPrisma } from '../perfil-acesso.mapper';
 
 export interface LoginResult {
   accessToken: string;
@@ -19,14 +20,15 @@ export interface LoginResult {
 @Injectable()
 export class LoginUseCase {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(INJECTION_TOKENS.USUARIO_REPOSITORY)
+    private readonly usuarioRepository: IUsuarioRepository,
     private readonly jwtService: JwtService,
     @Inject(INJECTION_TOKENS.HASH_PROVIDER)
     private readonly hashProvider: IHashProvider,
   ) {}
 
   async execute(email: string, senha: string): Promise<LoginResult> {
-    const usuario = await this.prisma.usuario.findUnique({ where: { email } });
+    const usuario = await this.usuarioRepository.buscarPorEmail(email);
     if (!usuario || !usuario.ativo) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
@@ -34,18 +36,20 @@ export class LoginUseCase {
     if (!senhaConfere) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
+    const perfil = perfilParaPrisma(usuario.perfil);
+    const id = usuario.id.toValue();
     const accessToken = this.jwtService.sign({
-      sub: usuario.id,
+      sub: id,
       email: usuario.email,
-      perfil: usuario.perfil,
+      perfil,
     });
     return {
       accessToken,
       usuario: {
-        id: usuario.id,
+        id,
         nome: usuario.nome,
         email: usuario.email,
-        perfil: usuario.perfil,
+        perfil,
       },
     };
   }
