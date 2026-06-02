@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-api-config
+  labels:
+    app.kubernetes.io/name: oficina-mecanica
+    app.kubernetes.io/component: api
+data:
+  # Configuração não-sensível da API. Segredos (DATABASE_URL, JWT_SECRET) ficam no Secret.
+  NODE_ENV: "production"
+  PORT: "3000"
+  JWT_EXPIRES_IN: "8h"
+  LOG_LEVEL: "info"
