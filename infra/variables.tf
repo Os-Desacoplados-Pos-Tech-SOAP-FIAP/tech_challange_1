@@ -45,3 +45,39 @@ variable "enable_cluster_creator_admin_permissions" {
   type        = bool
   default     = true
 }
+
+variable "db_name" {
+  description = "Nome do banco de dados inicial criado no RDS."
+  type        = string
+  default     = "oficina"
+}
+
+variable "db_username" {
+  description = "Usuário master do RDS."
+  type        = string
+  default     = "oficina"
+}
+
+variable "db_password" {
+  description = "Senha master do RDS. Forneça via TF_VAR_db_password ou tfvars (nunca versionar)."
+  type        = string
+  sensitive   = true
+}
+
+variable "db_instance_class" {
+  description = "Classe da instância RDS."
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Armazenamento alocado (GB) para o RDS."
+  type        = number
+  default     = 20
+}
+
+variable "db_engine_version" {
+  description = "Versão do PostgreSQL no RDS."
+  type        = string
+  default     = "16"
+}
