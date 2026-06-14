@@ -107,3 +107,14 @@ variable "db_skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+variable "ecr_image_tag_mutability" {
+  description = "Mutabilidade das tags do ECR. IMMUTABLE (recomendado p/ CI/CD) evita sobrescrever tags; o pipeline publica por SHA imutável."
+  type        = string
+  default     = "IMMUTABLE"
+
+  validation {
+    condition     = contains(["IMMUTABLE", "MUTABLE"], var.ecr_image_tag_mutability)
+    error_message = "ecr_image_tag_mutability deve ser IMMUTABLE ou MUTABLE."
+  }
+}
