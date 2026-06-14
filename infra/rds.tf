@@ -7,19 +7,20 @@ resource "aws_db_subnet_group" "this" {
 }
 
 resource "aws_security_group" "rds" {
-  name        = "${var.cluster_name}-rds"
-  description = "Permite acesso ao Postgres apenas a partir dos nos do EKS"
+  name = "${var.cluster_name}-rds"
+  # Descrição em ASCII puro: a API de Security Group da AWS rejeita acentos.
+  description = "Permite acesso ao Postgres apenas a partir dos nodes do EKS"
   vpc_id      = module.vpc.vpc_id
 }
 
-# Ingress 5432 liberado SOMENTE para o security group dos nós do EKS.
+# Ingress 5432 liberado SOMENTE para o security group dos nodes do EKS.
 resource "aws_vpc_security_group_ingress_rule" "rds_from_eks" {
   security_group_id            = aws_security_group.rds.id
   from_port                    = 5432
   to_port                      = 5432
   ip_protocol                  = "tcp"
   referenced_security_group_id = module.eks.node_security_group_id
-  description                  = "Postgres 5432 a partir do SG dos nos EKS"
+  description                  = "Postgres 5432 a partir do SG dos nodes EKS"
 }
 
 resource "aws_db_instance" "this" {
@@ -38,9 +39,11 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  multi_az            = false
   publicly_accessible = false
 
-  # Ambiente de estudo: descarta snapshot final ao destruir.
-  skip_final_snapshot = true
+  # Flags de proteção configuráveis (defaults sandbox-friendly; endureça em prod).
+  multi_az                  = var.db_multi_az
+  deletion_protection       = var.db_deletion_protection
+  skip_final_snapshot       = var.db_skip_final_snapshot
+  final_snapshot_identifier = var.db_skip_final_snapshot ? null : "${var.cluster_name}-db-final"
 }
