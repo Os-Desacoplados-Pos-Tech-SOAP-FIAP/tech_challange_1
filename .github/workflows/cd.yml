@@ -13,6 +13,12 @@ permissions:
   id-token: write
   contents: read
 
+# Evita deploys fora de ordem: se um novo run começar, cancela o anterior em
+# andamento para não "voltar" a versão em produção.
+concurrency:
+  group: cd-production
+  cancel-in-progress: true
+
 env:
   AWS_REGION: us-east-1
   EKS_CLUSTER: oficina-mecanica
@@ -76,10 +82,17 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Instala o kustomize
+      - name: Instala o kustomize (versão fixada)
+        env:
+          KUSTOMIZE_VERSION: v5.4.3
         run: |
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          # Baixa um release específico (sem `curl | bash` de script mutável).
+          cd /tmp
+          curl -sSL -o kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf kustomize.tar.gz
           sudo mv kustomize /usr/local/bin/
+          kustomize version
 
       - name: Atualiza o kubeconfig do cluster
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
@@ -92,11 +105,15 @@ jobs:
           cd k8s/overlays/prod
           kustomize edit set image "oficina-mecanica-api=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Aplica os manifestos e aguarda o rollout
-        run: |
-          kubectl apply -k k8s/overlays/prod
-          kubectl rollout status deployment/oficina-api -n oficina-mecanica --timeout=5m
+      - name: Aplica os manifestos
+        run: kubectl apply -k k8s/overlays/prod
+
+      - name: Aguarda o rollout
+        id: rollout
+        run: kubectl rollout status deployment/oficina-api -n oficina-mecanica --timeout=5m
 
       - name: Rollback automático se o rollout falhar
-        if: failure()
+        # Só desfaz quando o ROLLOUT especificamente falhou (não em erro de apply),
+        # evitando mascarar erros de YAML e undo sem revisão nova.
+        if: ${{ failure() && steps.rollout.outcome == 'failure' }}
         run: kubectl rollout undo deployment/oficina-api -n oficina-mecanica
