@@ -12,7 +12,7 @@ Provisiona, na AWS, toda a base para rodar a API NestJS em Kubernetes gerenciado
 | `vpc.tf` | VPC dedicada (módulo `terraform-aws-modules/vpc`): 3 AZs, 1 subnet pública + 1 privada por AZ (6 subnets), **1 NAT gateway** único, tags de descoberta para EKS/ALB. |
 | `eks.tf` | Cluster **EKS** (módulo `terraform-aws-modules/eks`) + 1 managed node group `t3.medium` (`desired 2 / min 2 / max 5`), **IRSA** habilitado. Providers `kubernetes`/`helm` autenticados via `aws eks get-token`. |
 | `rds.tf` | **RDS Postgres 16** `db.t3.micro` em subnets privadas, SG dedicado liberando 5432 apenas para os nós do EKS, `storage_encrypted`. |
-| `ecr.tf` | Repositório **ECR** `oficina-mecanica-api`, scan on push, tags `IMMUTABLE` por padrão. |
+| `ecr.tf` | Repositório **ECR** `${cluster_name}-api` (default `oficina-mecanica-api`), scan on push, tags `IMMUTABLE` por padrão. |
 | `secrets.tf` | **Secrets Manager**: `DATABASE_URL` (montada do RDS) e `JWT_SECRET` (gerado via `random_password`). Sincronizados ao cluster pelo External Secrets Operator. |
 | `outputs.tf` | `cluster_name`, `cluster_endpoint`, `rds_endpoint`, `ecr_repository_url`, `kubeconfig_command`, nomes dos secrets. |
 
@@ -60,11 +60,13 @@ terraform destroy
 
 ## Obter o kubeconfig
 
-Após o `apply`, configure o `kubectl` apontando para o cluster recém-criado:
+Após o `apply`, configure o `kubectl` apontando para o cluster recém-criado. O
+output `kubeconfig_command` já incorpora o cluster e a `aws_region` configurada,
+então não há região hardcoded:
 
 ```bash
-# O comando exato também sai em `terraform output kubeconfig_command`
-aws eks update-kubeconfig --name "$(terraform output -raw cluster_name)" --region us-east-1
+# Executa o comando pronto (já com cluster + região corretos)
+eval "$(terraform output -raw kubeconfig_command)"
 
 kubectl get nodes        # deve listar 2 nós Ready
 ```
