@@ -31,4 +31,10 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
+# Liveness do container: bate no endpoint público /api/health (sem auth, sem DB).
+# wget vem do busybox embutido na imagem alpine, então não há dependência extra.
+# Usa ${PORT:-3000} (shell form expande env) para acompanhar a porta lida pela app.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget --quiet --spider "http://localhost:${PORT:-3000}/api/health" || exit 1
+
 CMD ["node", "dist/main.js"]
