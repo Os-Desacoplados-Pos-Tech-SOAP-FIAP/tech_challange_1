@@ -2,6 +2,108 @@
 
 Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Atendimento e Execução de Serviços Automotivos**, organizado em **Domain-Driven Design (DDD)**.
 
+> **Fase 1** entregou a API DDD com autenticação, regras de domínio da Ordem de Serviço e testes. **Fase 2** (abaixo) leva a aplicação para a nuvem: Kubernetes (EKS), Infraestrutura como Código (Terraform) e CI/CD (GitHub Actions). A documentação da Fase 1 segue íntegra após a seção da Fase 2.
+
+## Fase 2 — Kubernetes, Infraestrutura como Código e CI/CD
+
+> 🎥 **Vídeo demonstrativo:** _a definir_ — o link do YouTube (não listado) será adicionado aqui **antes da entrega**.
+
+A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda em **Kubernetes gerenciado (EKS)** com escalabilidade automática, banco gerenciado (**RDS Postgres 16**), imagens versionadas no **ECR** e segredos no **Secrets Manager** — tudo provisionado por **Terraform** e entregue por **GitHub Actions** (CI + CD).
+
+### Objetivos da fase
+
+- **Conteinerização e deploy em Kubernetes** com manifestos versionados (Kustomize: base + overlays `dev`/`prod`).
+- **Escalabilidade dinâmica** em horários de pico via **HPA** (2 → 10 réplicas; CPU 70% / memória 80%).
+- **Infraestrutura reproduzível** com **Terraform** (VPC, EKS, RDS, ECR, Secrets Manager).
+- **Pipeline automatizado**: **CI** (lint + testes + cobertura ≥ 80%) e **CD** (build → push no ECR → deploy no EKS, com rollback automático).
+- **Endpoint público de saúde** (`/api/health`) para os probes do K8s e o `HEALTHCHECK` do Docker.
+- **Endpoint público de aprovação de orçamento** para o cliente externo, sem autenticação: `POST /api/publico/os/:numero/orcamento/decisao` (consulta em `GET /api/publico/os/:numero/orcamento`).
+
+### Arquitetura (Fase 2)
+
+```mermaid
+flowchart TB
+  subgraph net["Internet"]
+    user["Usuário / App"]
+    cliente["Cliente externo"]
+    push["Push em main"]
+  end
+
+  subgraph gha["GitHub Actions"]
+    ci["CI: lint + testes + cobertura 80%"]
+    cd["CD: build + deploy"]
+  end
+
+  ecr[("ECR - imagens Docker")]
+
+  subgraph aws["VPC AWS - 3 AZs"]
+    alb["ALB Ingress - internet-facing"]
+    subgraph eks["EKS Cluster"]
+      svc["Service ClusterIP porta 80 para 3000"]
+      pods["Pods - API NestJS"]
+      hpa["HPA 2 a 10 réplicas"]
+    end
+    rds[("RDS Postgres 16 - subnet privada")]
+    sm["Secrets Manager - DATABASE_URL e JWT_SECRET"]
+  end
+
+  user -->|HTTPS| alb
+  cliente -->|"aprovação de orçamento: POST /api/publico/.../decisao"| alb
+  alb --> svc --> pods
+  hpa -. escala .-> pods
+  pods -->|5432| rds
+  pods -. External Secrets .-> sm
+
+  push --> ci --> cd
+  cd -->|"docker build e push"| ecr
+  cd -->|"kubectl apply -k overlays/prod"| eks
+  ecr -->|"pull da imagem por SHA"| pods
+```
+
+> O diagrama acima é renderizado nativamente pelo GitHub (Mermaid) e é a fonte canônica da arquitetura da Fase 2.
+
+### Componentes provisionados
+
+| Camada | O que é | Onde está |
+| --- | --- | --- |
+| Rede | VPC dedicada (3 AZs, subnets pública/privada, 1 NAT) | [`infra/vpc.tf`](infra/vpc.tf) |
+| Compute | EKS + node group `t3.medium` (2→5), IRSA | [`infra/eks.tf`](infra/eks.tf) |
+| Banco | RDS Postgres 16 `db.t3.micro` (subnet privada) | [`infra/rds.tf`](infra/rds.tf) |
+| Imagens/Segredos | ECR + Secrets Manager (`DATABASE_URL`, `JWT_SECRET`) | [`infra/ecr.tf`](infra/ecr.tf), [`infra/secrets.tf`](infra/secrets.tf) |
+| App no cluster | Deployment (initContainer de migrations), Service, Ingress ALB, HPA | [`k8s/base/`](k8s/base) |
+| Pipeline | CI (`ci.yml`) e CD (`cd.yml`) | [`.github/workflows/`](.github/workflows) |
+
+### Como executar (Fase 2)
+
+**1. Local (Docker) — para desenvolvimento e testes rápidos:**
+
+```bash
+cp .env.example .env
+npm run docker:up
+# API em http://localhost:3000/api · Swagger em http://localhost:3000/api/docs
+```
+
+**2. Kubernetes (Kustomize) — sobre um cluster existente:**
+
+```bash
+kubectl apply -k k8s/overlays/dev    # ambiente de desenvolvimento
+kubectl apply -k k8s/overlays/prod   # produção
+```
+
+**3. Infraestrutura (Terraform) — provisiona a stack na AWS:**
+
+Passo a passo completo (variáveis, custo estimado, `init/plan/apply/destroy`, kubeconfig) em **[`infra/README.md`](infra/README.md)**.
+
+### Links
+
+- **Swagger / OpenAPI:** `/api/docs` (rota pública da documentação interativa).
+- **Operação da infraestrutura:** [`infra/README.md`](infra/README.md).
+- **Notificações por email (mock + estratégia de swap):** ver a seção [Notificações por email](#notificações-por-email) abaixo — o `ConsoleEmailProvider` é trocado por um provider real (SMTP/SES) apenas reconfigurando o binding no `InfrastructureModule`, sem tocar em `domain`/`application`.
+
+---
+
+> A partir daqui segue a documentação da **Fase 1** (mantida na íntegra).
+
 ## Tecnologias
 
 - **Node.js 20** / **TypeScript 5** (strict)
