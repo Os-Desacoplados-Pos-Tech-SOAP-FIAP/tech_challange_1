@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -39,8 +39,7 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') ?? 3000;
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`Oficina API rodando em http://localhost:${port}/api`);
+  Logger.log(`Oficina API rodando em http://localhost:${port}/api`, 'Bootstrap');
 }
 
 bootstrap();
