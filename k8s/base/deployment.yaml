@@ -18,12 +18,13 @@ spec:
         app.kubernetes.io/name: oficina-mecanica
         app.kubernetes.io/component: api
     spec:
-      # Aplica as migrations antes do container principal subir. Mesmo comando
-      # usado no docker-compose (npx prisma migrate deploy).
+      # Aplica as migrations antes do container principal subir. O Prisma CLI está
+      # em dependencies (presente na imagem de produção), então usamos o binário
+      # local (--no-install) — deploy determinístico, sem download em runtime.
       initContainers:
         - name: prisma-migrate
           image: oficina-mecanica-api:latest
-          command: ['npx', 'prisma', 'migrate', 'deploy']
+          command: ['npx', '--no-install', 'prisma', 'migrate', 'deploy']
           envFrom:
             - secretRef:
                 name: oficina-api-secret
