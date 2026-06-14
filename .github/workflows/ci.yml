@@ -30,7 +30,9 @@ jobs:
         run: npm run prisma:generate
 
       - name: Lint
-        run: npm run lint
+        # lint:ci roda o ESLint SEM --fix e com --max-warnings 0, garantindo que
+        # o gate valide o código tal como está na PR (sem auto-fix) e falhe em warnings.
+        run: npm run lint:ci
 
       - name: Testes (unit + e2e) com cobertura
         # test:cov roda os dois projetos do Jest (unit e e2e) e aplica o gate de

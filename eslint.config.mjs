@@ -15,7 +15,6 @@ export default tseslint.config(
       sourceType: 'module',
       globals: {
         ...globals.node,
-        ...globals.jest,
       },
     },
     rules: {
@@ -26,6 +25,16 @@ export default tseslint.config(
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+    },
+  },
+  {
+    // Globais do Jest apenas em arquivos de teste, evitando mascarar uso
+    // acidental dessas globais no código de produção (src/**).
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
     },
   },
 );
