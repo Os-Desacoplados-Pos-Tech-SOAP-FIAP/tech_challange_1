@@ -295,6 +295,15 @@ export function createPrismaMock() {
     orcamentoToken: {
       findUnique: async ({ where }: any) =>
         orcamentoTokens.find((t) => t.token === where.token || t.id === where.id) ?? null,
+      // Usado pelos e2e para recuperar o token emitido pelo evento (em produção
+      // o cliente o recebe por email). O repositório de produção nunca chama findFirst.
+      findFirst: async ({ where }: any = {}) =>
+        orcamentoTokens.find(
+          (t) =>
+            (where?.ordemDeServicoId === undefined ||
+              t.ordemDeServicoId === where.ordemDeServicoId) &&
+            (where?.token === undefined || t.token === where.token),
+        ) ?? null,
       create: async ({ data }: any) => {
         const tk = { ...data, id: data.id ?? randomUUID(), criadoEm: new Date() };
         orcamentoTokens.push(tk);
