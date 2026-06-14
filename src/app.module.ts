@@ -8,6 +8,7 @@ import { EventsModule } from './infrastructure/events/events.module';
 import { JwtAuthGuard } from './infrastructure/auth/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClienteModule } from './modules/cliente/cliente.module';
+import { HealthModule } from './modules/health/health.module';
 import { OrdemDeServicoModule } from './modules/ordem-de-servico/ordem-de-servico.module';
 import { InsumoModule } from './modules/insumo/insumo.module';
 import { PublicoModule } from './modules/publico/publico.module';
@@ -19,6 +20,7 @@ import { VeiculoModule } from './modules/veiculo/veiculo.module';
     ConfigModule.forRoot({ isGlobal: true }),
     EventsModule,
     InfrastructureModule,
+    HealthModule,
     AuthModule,
     ClienteModule,
     VeiculoModule,
