@@ -10,7 +10,9 @@ resources:
   - configmap.yaml
   - secret.yaml
   - deployment.yaml
-  # Service, Ingress e HPA entram aqui nas issues DEV-56..DEV-57.
+  - service.yaml
+  - ingress.yaml
+  # HPA entra aqui na issue DEV-57.
 
 # Imagem parametrizada: o CD (DEV-65) faz `kustomize edit set image
 # oficina-mecanica-api=<ECR>:<SHA>` no overlay de produção.

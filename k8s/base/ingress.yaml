@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oficina-api
+  labels:
+    app.kubernetes.io/name: oficina-mecanica
+    app.kubernetes.io/component: api
+  annotations:
+    # Provisiona um AWS Application Load Balancer voltado para a internet,
+    # roteando direto para os IPs dos Pods (target-type: ip). Requer o
+    # AWS Load Balancer Controller instalado no cluster (DEV-60 habilita IRSA).
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  # `ingressClassName` substitui a anotação `kubernetes.io/ingress.class` (deprecada).
+  # O AWS Load Balancer Controller cria a IngressClass `alb` por padrão na instalação.
+  # Mantemos também a anotação acima por compatibilidade com clusters mais antigos.
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oficina-api
+                port:
+                  number: 80
