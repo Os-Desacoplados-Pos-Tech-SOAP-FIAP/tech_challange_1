@@ -6,7 +6,7 @@ Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Aten
 
 ## Fase 2 — Kubernetes, Infraestrutura como Código e CI/CD
 
-> 🎥 **Vídeo demonstrativo:** `https://youtu.be/SEU-LINK-AQUI` _(YouTube não listado — **preencher antes da entrega**)_
+> 🎥 **Vídeo demonstrativo:** _a definir_ — o link do YouTube (não listado) será adicionado aqui **antes da entrega**.
 
 A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda em **Kubernetes gerenciado (EKS)** com escalabilidade automática, banco gerenciado (**RDS Postgres 16**), imagens versionadas no **ECR** e segredos no **Secrets Manager** — tudo provisionado por **Terraform** e entregue por **GitHub Actions** (CI + CD).
 
@@ -17,14 +17,14 @@ A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda
 - **Infraestrutura reproduzível** com **Terraform** (VPC, EKS, RDS, ECR, Secrets Manager).
 - **Pipeline automatizado**: **CI** (lint + testes + cobertura ≥ 80%) e **CD** (build → push no ECR → deploy no EKS, com rollback automático).
 - **Endpoint público de saúde** (`/api/health`) para os probes do K8s e o `HEALTHCHECK` do Docker.
-- **Endpoint público de aprovação de orçamento** para o cliente externo (sem autenticação).
+- **Endpoint público de aprovação de orçamento** para o cliente externo, sem autenticação: `POST /api/publico/os/:numero/orcamento/decisao` (consulta em `GET /api/publico/os/:numero/orcamento`).
 
 ### Arquitetura (Fase 2)
 
 ```mermaid
 flowchart TB
   subgraph net["Internet"]
-    user["Usuario / App"]
+    user["Usuário / App"]
     cliente["Cliente externo"]
     push["Push em main"]
   end
@@ -41,14 +41,14 @@ flowchart TB
     subgraph eks["EKS Cluster"]
       svc["Service ClusterIP porta 80 para 3000"]
       pods["Pods - API NestJS"]
-      hpa["HPA 2 a 10 replicas"]
+      hpa["HPA 2 a 10 réplicas"]
     end
     rds[("RDS Postgres 16 - subnet privada")]
     sm["Secrets Manager - DATABASE_URL e JWT_SECRET"]
   end
 
   user -->|HTTPS| alb
-  cliente -->|"aprovacao de orcamento /publico"| alb
+  cliente -->|"aprovação de orçamento: POST /api/publico/.../decisao"| alb
   alb --> svc --> pods
   hpa -. escala .-> pods
   pods -->|5432| rds
