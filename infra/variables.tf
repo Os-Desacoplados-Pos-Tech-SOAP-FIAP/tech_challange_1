@@ -16,6 +16,12 @@ variable "cluster_name" {
   default     = "oficina-mecanica"
 }
 
+variable "cluster_version" {
+  description = "Versão do Kubernetes do cluster EKS."
+  type        = string
+  default     = "1.30"
+}
+
 variable "vpc_cidr" {
   description = "Bloco CIDR da VPC dedicada."
   type        = string
