@@ -30,7 +30,9 @@ export class EventDispatcher implements OnModuleInit {
           methodName,
         );
         if (meta) {
-          const bound = (instance as Record<string, Function>)[methodName].bind(instance);
+          const bound = (instance as Record<string, (...args: unknown[]) => unknown>)[
+            methodName
+          ].bind(instance);
           this.register(meta, bound as Handler);
         }
       });
