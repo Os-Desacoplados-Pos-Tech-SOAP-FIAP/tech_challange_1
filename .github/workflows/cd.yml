@@ -5,9 +5,6 @@ name: CD
 # próprio runner. Assim o histórico do GitHub Actions contempla o Deploy sem
 # depender de AWS. O alvo de produção (EKS/RDS) está descrito em `infra/` (Terraform).
 on:
-  # TEMPORÁRIO: permite testar a esteira de CD nesta branch antes do merge.
-  push:
-    branches: [feat/cd-deploy-local-kind]
   workflow_run:
     workflows: ['CI']
     types: [completed]

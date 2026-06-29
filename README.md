@@ -15,7 +15,7 @@ A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda
 - **Conteinerização e deploy em Kubernetes** com manifestos versionados (Kustomize: base + overlays `dev`/`prod`).
 - **Escalabilidade dinâmica** em horários de pico via **HPA** (2 → 10 réplicas; CPU 70% / memória 80%).
 - **Infraestrutura reproduzível** com **Terraform** (VPC, EKS, RDS, ECR, Secrets Manager).
-- **Pipeline automatizado**: **CI** (lint + testes + cobertura ≥ 80%) e **CD** (build → push no ECR → deploy no EKS, com rollback automático).
+- **Pipeline automatizado e completo**: **CI** (lint + testes + cobertura ≥ 80%) e **CD** que faz **build + deploy de verdade** — verificado por `kubectl rollout status` e smoke test em `/api/health` — visível no histórico do GitHub Actions. O CD entrega em um cluster **Kubernetes (kind) efêmero criado no próprio runner** (não exige AWS); o alvo de **produção** é o **EKS/RDS/ECR** descrito em [`infra/`](infra/) (Terraform).
 - **Endpoint público de saúde** (`/api/health`) para os probes do K8s e o `HEALTHCHECK` do Docker.
 - **Endpoint público de aprovação de orçamento** para o cliente externo, sem autenticação: `POST /api/publico/os/:numero/orcamento/decisao` (consulta em `GET /api/publico/os/:numero/orcamento`).
 
@@ -71,7 +71,8 @@ flowchart TB
 | Banco | RDS Postgres 16 `db.t3.micro` (subnet privada) | [`infra/rds.tf`](infra/rds.tf) |
 | Imagens/Segredos | ECR + Secrets Manager (`DATABASE_URL`, `JWT_SECRET`) | [`infra/ecr.tf`](infra/ecr.tf), [`infra/secrets.tf`](infra/secrets.tf) |
 | App no cluster | Deployment (initContainer de migrations), Service, Ingress ALB, HPA | [`k8s/base/`](k8s/base) |
-| Pipeline | CI (`ci.yml`) e CD (`cd.yml`) | [`.github/workflows/`](.github/workflows) |
+| Deploy local (CD) | Overlay para cluster `kind` (Postgres no cluster, sem Ingress ALB) | [`k8s/overlays/ci/`](k8s/overlays/ci) |
+| Pipeline | CI (`ci.yml`) e CD (`cd.yml`, deploy em `kind` no runner) | [`.github/workflows/`](.github/workflows) |
 
 ### Como executar (Fase 2)
 
