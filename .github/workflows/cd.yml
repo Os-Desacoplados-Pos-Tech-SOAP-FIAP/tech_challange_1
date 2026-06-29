@@ -1,119 +1,77 @@
 name: CD
 
-# Dispara após o workflow de CI concluir com sucesso em `main`, garantindo que
-# só fazemos build/deploy de código que passou em lint + testes + cobertura.
+# Entrega contínua local: após o CI passar em `main`, a esteira faz o build da
+# imagem e o DEPLOY de verdade em um cluster Kubernetes (kind) efêmero, criado no
+# próprio runner. Assim o histórico do GitHub Actions contempla o Deploy sem
+# depender de AWS. O alvo de produção (EKS/RDS) está descrito em `infra/` (Terraform).
 on:
+  # TEMPORÁRIO: permite testar a esteira de CD nesta branch antes do merge.
+  push:
+    branches: [feat/cd-deploy-local-kind]
   workflow_run:
     workflows: ['CI']
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
-# OIDC: assume a role da AWS sem chaves estáticas.
 permissions:
-  id-token: write
   contents: read
 
-# Evita deploys fora de ordem: se um novo run começar, cancela o anterior em
-# andamento para não "voltar" a versão em produção.
 concurrency:
-  group: cd-production
+  group: cd-local
   cancel-in-progress: true
 
-env:
-  AWS_REGION: us-east-1
-  EKS_CLUSTER: oficina-mecanica
-  ECR_REPOSITORY: oficina-mecanica-api
-
 jobs:
-  build-and-push:
-    name: Build e push da imagem (ECR)
-    # Só roda se o CI passou E o CD estiver habilitado. O gate `vars.ENABLE_CD`
-    # evita runs vermelhos em `main` enquanto a infra (Terraform) e o secret
-    # AWS_ROLE_ARN não estiverem provisionados. Habilite uma única vez definindo
-    # a variável de repositório ENABLE_CD=true — depois o fluxo é automático.
-    if: ${{ github.event.workflow_run.conclusion == 'success' && vars.ENABLE_CD == 'true' }}
-    runs-on: ubuntu-latest
-    outputs:
-      registry: ${{ steps.login-ecr.outputs.registry }}
-      image_tag: ${{ steps.vars.outputs.image_tag }}
-    steps:
-      - name: Checkout (commit que passou no CI)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Define a tag da imagem (SHA do commit)
-        id: vars
-        run: echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-
-      - name: Configura credenciais AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login no Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build e push da imagem
-        # ECR usa tags IMMUTABLE (DEV-62); publicamos apenas por SHA imutável.
-        # O Deployment fixa esse SHA via kustomize, então `latest` é desnecessário.
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.vars.outputs.image_tag }}
-        run: |
-          docker build -f docker/Dockerfile -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
-          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-  deploy:
-    name: Deploy no EKS
-    needs: build-and-push
+  deploy-kind:
+    name: Build e Deploy (cluster kind efêmero)
+    # Roda no push de teste, no dispatch manual, ou quando o CI passou em main.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (commit que passou no CI)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
-      - name: Configura credenciais AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Build da imagem da API
+        run: docker build -f docker/Dockerfile -t oficina-mecanica-api:ci .
+
+      - name: Cria o cluster kind
+        uses: helm/kind-action@v1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          cluster_name: oficina-ci
+          node_image: kindest/node:v1.29.4
 
-      - name: Instala o kustomize (versão fixada)
-        env:
-          KUSTOMIZE_VERSION: v5.4.3
-        run: |
-          # Baixa um release específico (sem `curl | bash` de script mutável).
-          cd /tmp
-          curl -sSL -o kustomize.tar.gz \
-            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-          tar -xzf kustomize.tar.gz
-          sudo mv kustomize /usr/local/bin/
-          kustomize version
+      - name: Carrega a imagem no cluster kind
+        run: kind load docker-image oficina-mecanica-api:ci --name oficina-ci
 
-      - name: Atualiza o kubeconfig do cluster
-        run: aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+      - name: Deploy (Kustomize overlay de CI)
+        run: kubectl apply -k k8s/overlays/ci
 
-      - name: Fixa a imagem (SHA) no overlay de produção
-        env:
-          REGISTRY: ${{ needs.build-and-push.outputs.registry }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-        run: |
-          cd k8s/overlays/prod
-          kustomize edit set image "oficina-mecanica-api=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+      - name: Aguarda o Postgres ficar pronto
+        run: kubectl wait --for=condition=ready pod -l app=postgres -n oficina-mecanica --timeout=180s
 
-      - name: Aplica os manifestos
-        run: kubectl apply -k k8s/overlays/prod
-
-      - name: Aguarda o rollout
+      - name: Aguarda o rollout da API
         id: rollout
-        run: kubectl rollout status deployment/oficina-api -n oficina-mecanica --timeout=5m
+        # Cobre o initContainer de migrations + boot da app (readiness em /api/health).
+        run: kubectl rollout status deployment/oficina-api -n oficina-mecanica --timeout=300s
+
+      - name: Smoke test do endpoint /api/health
+        run: |
+          POD=$(kubectl get pod -n oficina-mecanica -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n oficina-mecanica "$POD" -- wget -qO- http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: Estado final do deploy
+        run: kubectl get deployment,svc,hpa,pods -n oficina-mecanica
+
+      - name: Diagnóstico (somente em falha)
+        if: failure()
+        run: |
+          kubectl get all -n oficina-mecanica || true
+          kubectl describe pods -n oficina-mecanica || true
+          kubectl logs -n oficina-mecanica -l app.kubernetes.io/component=api --all-containers --tail=100 || true
 
       - name: Rollback automático se o rollout falhar
-        # Só desfaz quando o ROLLOUT especificamente falhou (não em erro de apply),
-        # evitando mascarar erros de YAML e undo sem revisão nova.
+        # Só desfaz quando o ROLLOUT especificamente falhou (não em erro de apply).
         if: ${{ failure() && steps.rollout.outcome == 'failure' }}
-        run: kubectl rollout undo deployment/oficina-api -n oficina-mecanica
+        run: kubectl rollout undo deployment/oficina-api -n oficina-mecanica || true

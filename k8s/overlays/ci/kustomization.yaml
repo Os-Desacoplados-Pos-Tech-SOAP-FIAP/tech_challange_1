@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Overlay usado pelo pipeline de CD em cluster kind efêmero (deploy local, sem AWS).
+# Diferenças em relação à produção:
+#   - adiciona um Postgres no próprio cluster (o prod usa RDS);
+#   - injeta credenciais reais de teste no Secret;
+#   - usa a imagem construída e carregada via `kind load` (tag `ci`);
+#   - remove o Ingress ALB (só provisiona na AWS) — acesso via Service/port-forward.
+namespace: oficina-mecanica
+
+resources:
+  - ../../base
+  - postgres.yaml
+
+images:
+  - name: oficina-mecanica-api
+    newTag: ci
+
+patches:
+  # Credenciais de teste apontando para o Postgres do cluster.
+  - patch: |-
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: oficina-api-secret
+        namespace: oficina-mecanica
+      stringData:
+        DATABASE_URL: "postgresql://oficina:oficina@postgres:5432/oficina?schema=public"
+        JWT_SECRET: "ci-test-secret-not-for-prod"
+
+  # Remove o Ingress ALB (não há ALB controller no kind).
+  - patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: oficina-api
+        namespace: oficina-mecanica
+      $patch: delete
