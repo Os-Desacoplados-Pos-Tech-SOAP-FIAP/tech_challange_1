@@ -1,0 +1,60 @@
+# Postgres efêmero no cluster, apenas para o deploy de CI/local (kind). NÃO é o
+# banco de produção (esse é o RDS provisionado pelo Terraform). Sem volume
+# persistente: o cluster é descartado ao fim do job.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: oficina-mecanica
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: oficina
+            - name: POSTGRES_PASSWORD
+              value: oficina
+            - name: POSTGRES_DB
+              value: oficina
+          readinessProbe:
+            exec:
+              command: ['sh', '-c', 'pg_isready -U oficina -d oficina']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
