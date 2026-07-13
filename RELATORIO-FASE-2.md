@@ -158,6 +158,6 @@ corrigidas no diagrama; tabela confirmada correta (falso positivo respondido).
 
 ## 7. Pendências (fora do escopo de código, para a entrega)
 
-- Preencher o **link do vídeo demonstrativo** no `README.md` (placeholder _a definir_).
+- **Link do vídeo demonstrativo:** https://youtu.be/SwKqzc23xvA ✅
 - Para deploy real: provisionar a infra (`terraform apply`), configurar o secret `AWS_ROLE_ARN`
   (role IAM com trust de GitHub OIDC) e definir a variável de repositório `ENABLE_CD=true`.
