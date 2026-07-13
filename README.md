@@ -6,7 +6,7 @@ Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Aten
 
 ## Fase 2 — Kubernetes, Infraestrutura como Código e CI/CD
 
-> 🎥 **Vídeo demonstrativo:** _a definir_ — o link do YouTube (não listado) será adicionado aqui **antes da entrega**.
+> 🎥 **Vídeo demonstrativo:** [https://youtu.be/SwKqzc23xvA](https://youtu.be/SwKqzc23xvA)
 
 A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda em **Kubernetes gerenciado (EKS)** com escalabilidade automática, banco gerenciado (**RDS Postgres 16**), imagens versionadas no **ECR** e segredos no **Secrets Manager** — tudo provisionado por **Terraform** e entregue por **GitHub Actions** (CI + CD).
 
