@@ -161,3 +161,23 @@ corrigidas no diagrama; tabela confirmada correta (falso positivo respondido).
 - **Link do vídeo demonstrativo:** https://youtu.be/SwKqzc23xvA ✅
 - Para deploy real: provisionar a infra (`terraform apply`), configurar o secret `AWS_ROLE_ARN`
   (role IAM com trust de GitHub OIDC) e definir a variável de repositório `ENABLE_CD=true`.
+
+
+# Status dos Entregáveis da Fase 2
+
+| Entregável | Status | Localização |
+| --- | --- | --- |
+| Dockerfile | Completo | [`docker/Dockerfile`](docker/Dockerfile) (2 stages, HEALTHCHECK) |
+| docker-compose | Completo | [`docker-compose.yml`](docker-compose.yml) (API + Postgres) |
+| Manifestos Kubernetes | Completo | [`k8s/base/`](k8s/base/) (8 YAMLs: deployment, service, ingress, HPA…) |
+| Overlays K8s | Completo | [`k8s/overlays/`](k8s/overlays/) (ci, dev, prod) |
+| Terraform | Completo | [`infra/`](infra/) (VPC, EKS, RDS, ECR, Secrets Manager) |
+| Pipeline CI/CD | Completo | [`.github/workflows/`](.github/workflows/) (ci.yml + cd.yml) |
+| README — Descrição e objetivos | Completo | [`README.md`](README.md) |
+| README — Diagrama de arquitetura | Completo | Mermaid flowchart com app, infra e deploy |
+| README — Instruções local | Completo | `docker:up` documentado |
+| README — Instruções Kubernetes | Completo | Kustomize dev/prod documentado |
+| README — Instruções Terraform | Completo | Link para [`infra/README.md`](infra/README.md) |
+| README — Link API (Swagger) | Completo | `/api/docs` documentado |
+| README — Link vídeo demonstrativo | Completo | [https://youtu.be/SwKqzc23xvA](https://youtu.be/SwKqzc23xvA) |
+| Swagger configurado | Completo | [`src/main.ts`](src/main.ts) |
