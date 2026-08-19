@@ -1,0 +1,642 @@
+### =============================================================
+### Oficina Mecânica — REST Client (FASE 2)
+### Extensão: https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+###
+### Este arquivo é autossuficiente: cobre TODO o fluxo de negócio
+### (auth → cadastro → OS → orçamento → execução → entrega → métricas)
+### E adiciona seções dedicadas que comprovam os requisitos da Fase 2:
+###   - Seção 0   : Health check (probe K8s / HEALTHCHECK Docker)
+###   - Seção 5   : Notificação de status por e-mail (token de orçamento)
+###   - Seção 10  : Ordenação da listagem + exclusão lógica de finalizadas/entregues
+###
+### Como usar:
+###   1. Suba a API local (npm run docker:up  OU  start:dev + Postgres + seed)
+###   2. Execute cada request clicando em "Send Request"
+###   3. Os tokens e IDs são capturados automaticamente das respostas
+###   4. Execute na ordem das seções para o fluxo completo
+### =============================================================
+
+# ---------------------------------------------------------------
+# Variáveis globais
+# ---------------------------------------------------------------
+@baseUrl = http://localhost:3000/api
+
+# IDs fixos do seed (válidos após reset do banco)
+@joaoId          = 00000000-0000-4001-8000-000000000004
+@mariaId         = 00000000-0000-4001-8000-000000000005
+@carlosId        = 00000000-0000-4001-8000-000000000002
+@fernandaId      = 00000000-0000-4001-8000-000000000003
+
+@golId           = 00000000-0000-4002-8000-000000000004
+@onixId          = 00000000-0000-4002-8000-000000000005
+@unoId           = 00000000-0000-4002-8000-000000000002
+@dailyId         = 00000000-0000-4002-8000-000000000003
+
+@svcPastilhas    = 00000000-0000-4003-8000-000000000005
+@svcLimpezaBicos = 00000000-0000-4003-8000-000000000003
+@svcTrocaOleo    = 00000000-0000-4003-8000-000000000006
+@svcAlinhamento  = 00000000-0000-4003-8000-000000000001
+@svcBalanceamento= 00000000-0000-4003-8000-000000000002
+@svcRevisao      = 00000000-0000-4003-8000-000000000004
+
+@insPastilha     = 00000000-0000-4004-8000-000000000003
+@insFiltroOleo   = 00000000-0000-4004-8000-000000000002
+@insOleo5w30     = 00000000-0000-4004-8000-000000000001
+@insPneu         = 00000000-0000-4004-8000-000000000005
+@insCorreia      = 00000000-0000-4004-8000-000000000004
+@insBateria      = 00000000-0000-4004-8000-000000000006
+
+
+### ==============================================================
+### SEÇÃO 0 — HEALTH CHECK (Fase 2)
+### Rota pública, sem JWT e sem banco. Usada pelos probes do
+### Kubernetes (liveness/readiness) e pelo HEALTHCHECK do Docker.
+### Esperado: 200 { "status": "ok" }
+### ==============================================================
+
+### 0.1 Health check
+GET {{baseUrl}}/health
+
+
+### ==============================================================
+### SEÇÃO 1 — AUTENTICAÇÃO
+### ==============================================================
+
+### 1.1 Login como atendente
+# @name loginAtendente
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "atendente@oficina.local",
+  "senha": "senha123"
+}
+
+###
+
+# Token capturado automaticamente da resposta acima
+@atendenteToken = {{loginAtendente.response.body.$.accessToken}}
+
+###
+
+### 1.2 Login como administrador
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@oficina.local",
+  "senha": "admin123"
+}
+
+###
+
+@adminToken = {{loginAdmin.response.body.$.accessToken}}
+
+###
+
+### 1.3 Login como mecânico (Pedro)
+# @name loginMecanico
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "mecanico1@oficina.local",
+  "senha": "senha123"
+}
+
+###
+
+@mecanicoToken = {{loginMecanico.response.body.$.accessToken}}
+
+
+### ==============================================================
+### SEÇÃO 2 — CADASTROS (pré-requisitos)
+### ==============================================================
+
+### 2.1 Criar novo usuário mecânico (admin)
+POST {{baseUrl}}/auth/registrar
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "nome": "Lucas Mecânico",
+  "email": "lucas.mecanico@oficina.local",
+  "senha": "senha123",
+  "perfil": "MECANICO"
+}
+
+###
+
+### 2.2 Criar novo cliente
+# @name novoCliente
+POST {{baseUrl}}/clientes
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "PF",
+  "documento": "854.679.790-00",
+  "nome": "Roberto Alves",
+  "email": "roberto.alves@gmail.com",
+  "telefone": "(41) 99123-4567"
+}
+
+###
+
+@novoClienteId = {{novoCliente.response.body.$.id}}
+
+###
+
+### 2.3 Buscar cliente por documento (Roberto Alves — criado acima)
+GET {{baseUrl}}/clientes/documento/85467979000
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 2.4 Listar clientes
+GET {{baseUrl}}/clientes
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 2.5 Criar veículo para o novo cliente
+# @name novoVeiculo
+POST {{baseUrl}}/veiculos
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "placa": "PRT7K88",
+  "marca": "Toyota",
+  "modelo": "Corolla",
+  "ano": 2023,
+  "clienteId": "{{novoClienteId}}"
+}
+
+###
+
+@novoVeiculoId = {{novoVeiculo.response.body.$.id}}
+
+###
+
+### 2.6 Listar veículos do novo cliente (Roberto Alves)
+GET {{baseUrl}}/veiculos?clienteId={{novoClienteId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 2.7 Listar serviços disponíveis
+GET {{baseUrl}}/servicos
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 2.8 Listar insumos disponíveis
+GET {{baseUrl}}/insumos
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 2.9 Criar novo serviço (admin)
+POST {{baseUrl}}/servicos
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "nome": "Troca de correia",
+  "descricao": "Substituição da correia dentada e tensores",
+  "valorPadrao": 320.00
+}
+
+###
+
+### 2.10 Criar novo insumo (admin)
+POST {{baseUrl}}/insumos
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "codigo": "PEC-010",
+  "nome": "Fluido de freio DOT 4",
+  "tipo": "INSUMO",
+  "valorUnitario": 28.50,
+  "quantidadeEstoque": 40
+}
+
+###
+
+### 2.11 Atualizar estoque de um insumo (admin)
+PATCH {{baseUrl}}/insumos/{{insPastilha}}/estoque
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "quantidade": 50
+}
+
+
+### ==============================================================
+### SEÇÃO 3 — ABERTURA DA ORDEM DE SERVIÇO
+### ==============================================================
+
+### 3.1 Abrir OS (João Silva / Gol)
+# @name criarOS
+POST {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{joaoId}}",
+  "veiculoId": "{{golId}}",
+  "observacoes": "Cliente relata barulho ao frear e consumo alto de combustível"
+}
+
+###
+
+# IDs capturados da OS criada
+@osId     = {{criarOS.response.body.$.id}}
+@osNumero = {{criarOS.response.body.$.numero}}
+
+###
+
+### 3.2 Listar todas as OS
+GET {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 3.3 Buscar OS por ID
+GET {{baseUrl}}/ordens-de-servico/{{osId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 3.4 Buscar OS por número sequencial
+GET {{baseUrl}}/ordens-de-servico/numero/{{osNumero}}
+Authorization: Bearer {{atendenteToken}}
+
+
+### ==============================================================
+### SEÇÃO 4 — ITENS DO ORÇAMENTO
+### Status atual: RECEBIDA → EM_DIAGNOSTICO (automático no 1º item)
+### Itens duplicados (mesmo tipo + referenciaId) são mesclados:
+### a quantidade é somada ao item já existente.
+### ==============================================================
+
+### 4.1 Adicionar serviço: Troca de pastilhas
+# Automático: OS passa de RECEBIDA para EM_DIAGNOSTICO
+# @name addItem1
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcPastilhas}}",
+  "quantidade": 1
+}
+
+###
+
+### 4.2 Adicionar serviço: Limpeza de bicos
+# @name addItem2
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcLimpezaBicos}}",
+  "quantidade": 1
+}
+
+###
+
+### 4.3 Adicionar insumo: Pastilha de freio dianteira
+# @name addItem3
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "INSUMO",
+  "insumoId": "{{insPastilha}}",
+  "quantidade": 1
+}
+
+###
+
+### 4.4 Adicionar o MESMO insumo novamente (demonstra merge)
+# Como já existe item com tipo=INSUMO + insumoId={{insPastilha}},
+# o backend NÃO cria um novo item: ele incrementa a quantidade do
+# item existente (passa de 1 para 2). itensOrcamento continua com 3 itens.
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "INSUMO",
+  "insumoId": "{{insPastilha}}",
+  "quantidade": 1
+}
+
+###
+
+### 4.5 Buscar OS para obter IDs dos itens de orçamento
+# Execute esta request ANTES da seção 7 (execução)
+# Os IDs dos itens aparecem em itensOrcamento[].id
+# @name getOS
+GET {{baseUrl}}/ordens-de-servico/{{osId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+# IDs dos itens de orçamento (SERVICO) — necessários na seção 7
+@itemId1 = {{getOS.response.body.$.itensOrcamento[0].id}}
+@itemId2 = {{getOS.response.body.$.itensOrcamento[1].id}}
+
+
+### ==============================================================
+### SEÇÃO 5 — ENVIO DO ORÇAMENTO PARA APROVAÇÃO
+### Status atual: EM_DIAGNOSTICO → AGUARDANDO_APROVACAO (manual)
+###
+### REQUISITO FASE 2 — Atualização de status via e-mail:
+### esta transição dispara o evento OS_ORCAMENTO_ENVIADO, tratado por
+### GerarTokenOrcamentoHandler, que gera um token de uso único e
+### "envia" o e-mail ao cliente. Com o ConsoleEmailProvider atual, o
+### e-mail (assunto, corpo e LINK com o token) sai no LOG da aplicação:
+###   - Docker:    docker logs -f oficina-api
+###   - start:dev: console onde a API está rodando
+### Copie o token do log para usar na Seção 6 (consulta/decisão pública).
+### ==============================================================
+
+### 5.1 Avançar status (sem body — backend decide o próximo)
+# Avança: EM_DIAGNOSTICO → AGUARDANDO_APROVACAO
+# Automático: sistema gera token e envia e-mail ao cliente (ver log)
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+
+### ==============================================================
+### SEÇÃO 6 — APROVAÇÃO PELO CLIENTE (rotas públicas, sem login)
+### REQUISITO FASE 2 — endpoint para receber a decisão externa
+### (aprovação/recusa) do orçamento do cliente.
+### ==============================================================
+
+### 6.1 Consultar status público da OS
+GET {{baseUrl}}/publico/os/{{osNumero}}/status
+
+###
+
+### 6.2 Consultar orçamento com token (link do e-mail)
+# Substitua o valor abaixo pelo token recebido no e-mail (log da app).
+# Alternativa via banco:
+#   SELECT token FROM "OrcamentoToken" ORDER BY "criadoEm" DESC LIMIT 1;
+# Token já utilizado retorna 401 Unauthorized.
+@orcamentoToken = 483e38a9-52d8-4dbe-9b40-ab5427d79584
+
+GET {{baseUrl}}/publico/os/{{osNumero}}/orcamento?token={{orcamentoToken}}
+
+###
+
+### 6.3 Cliente aprova o orçamento
+# Automático: OS passa de AGUARDANDO_APROVACAO → APROVADA
+# Reenviar a decisão com o mesmo token retorna 401 Unauthorized.
+# @name aprovacaoCliente
+POST {{baseUrl}}/publico/os/{{osNumero}}/orcamento/decisao
+Content-Type: application/json
+
+{
+  "token": "{{orcamentoToken}}",
+  "decisao": "APROVADA"
+}
+
+###
+
+### 6.4 (alternativa) Cliente reprova o orçamento
+# Automático: OS passa de AGUARDANDO_APROVACAO → REPROVADA (fluxo encerra)
+# POST {{baseUrl}}/publico/os/{{osNumero}}/orcamento/decisao
+# Content-Type: application/json
+#
+# {
+#   "token": "{{orcamentoToken}}",
+#   "decisao": "REPROVADA"
+# }
+
+
+### ==============================================================
+### SEÇÃO 7 — EXECUÇÃO DOS SERVIÇOS (mecânico)
+### Perfil: MECANICO — ID do mecânico vem do JWT
+### Status atual: APROVADA → EM_EXECUCAO (automático na 1ª execução)
+### ==============================================================
+###
+### IMPORTANTE: Execute a request 4.5 (getOS) antes desta seção
+### para popular @itemId1 e @itemId2 com os IDs corretos.
+###
+### Cada item SERVICO requer 2 chamadas:
+###   1ª chamada → marca INÍCIO da execução
+###   2ª chamada → marca FIM e calcula o tempo automaticamente
+###
+### Quando TODOS os itens SERVICO forem concluídos:
+###   Automático: OS passa de EM_EXECUCAO → FINALIZADA
+###
+### DICA (ordenação - Seção 10): enquanto esta OS estiver em
+### EM_EXECUCAO (entre 7.1 e 7.4), rode a request 10.5 para vê-la
+### no TOPO da listagem (peso 1, acima de Aguardando/Diagnóstico/Recebida).
+### ==============================================================
+
+### 7.1 Item 1 — INÍCIO da execução (Troca de pastilhas)
+# Automático: OS passa de APROVADA → EM_EXECUCAO
+POST {{baseUrl}}/itens-de-orcamento/{{itemId1}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.2 Item 1 — FIM da execução (Troca de pastilhas)
+POST {{baseUrl}}/itens-de-orcamento/{{itemId1}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.3 Item 2 — INÍCIO da execução (Limpeza de bicos)
+POST {{baseUrl}}/itens-de-orcamento/{{itemId2}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.4 Item 2 — FIM da execução (Limpeza de bicos)
+# Automático: como é o último item, OS passa de EM_EXECUCAO → FINALIZADA
+POST {{baseUrl}}/itens-de-orcamento/{{itemId2}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+
+### ==============================================================
+### SEÇÃO 8 — ENTREGA DO VEÍCULO
+### Status atual: FINALIZADA → ENTREGUE (manual)
+### ==============================================================
+
+### 8.1 Avançar status para ENTREGUE (sem body)
+POST {{baseUrl}}/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 8.2 Verificar OS finalizada
+GET {{baseUrl}}/ordens-de-servico/{{osId}}
+Authorization: Bearer {{atendenteToken}}
+
+
+### ==============================================================
+### SEÇÃO 9 — MÉTRICAS (administrador)
+### ==============================================================
+
+### 9.1 Tempo médio geral de execução
+GET {{baseUrl}}/ordens-de-servico/metricas/tempo-medio
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 9.2 Tempo médio por serviço
+GET {{baseUrl}}/ordens-de-servico/metricas/tempo-medio-por-servico
+Authorization: Bearer {{adminToken}}
+
+
+### ==============================================================
+### SEÇÃO 10 — REQUISITOS FASE 2: ORDENAÇÃO + EXCLUSÃO LÓGICA
+### ==============================================================
+###
+### Regra de listagem (ListarOSUseCase):
+###   Ordem por status →  EM_EXECUCAO  >  AGUARDANDO_APROVACAO
+###                       >  EM_DIAGNOSTICO  >  RECEBIDA
+###   Desempate → criadas há mais tempo primeiro.
+###   Excluídas (filtro lógico, não físico) → FINALIZADA e ENTREGUE.
+###
+### Para comprovar a ordenação criamos 3 OS auxiliares e as deixamos
+### em estados distintos (RECEBIDA, EM_DIAGNOSTICO, AGUARDANDO_APROVACAO).
+### O estado EM_EXECUCAO (topo) é demonstrado pela OS principal durante
+### a Seção 7 (ver DICA na 10.5).
+### ==============================================================
+
+### 10.1 OS-A → ficará em RECEBIDA (apenas criar, sem itens)
+# @name osA
+POST {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{mariaId}}",
+  "veiculoId": "{{onixId}}",
+  "observacoes": "OS-A (ordenacao) — permanece em RECEBIDA"
+}
+
+###
+
+@osAId = {{osA.response.body.$.id}}
+
+###
+
+### 10.2 OS-B → ficará em EM_DIAGNOSTICO (criar + 1 item)
+# @name osB
+POST {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{carlosId}}",
+  "veiculoId": "{{unoId}}",
+  "observacoes": "OS-B (ordenacao) — vai para EM_DIAGNOSTICO"
+}
+
+###
+
+@osBId = {{osB.response.body.$.id}}
+
+###
+
+# Adiciona 1 item → OS-B passa de RECEBIDA para EM_DIAGNOSTICO
+POST {{baseUrl}}/ordens-de-servico/{{osBId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcTrocaOleo}}",
+  "quantidade": 1
+}
+
+###
+
+### 10.3 OS-C → ficará em AGUARDANDO_APROVACAO (criar + 1 item + avançar status)
+# @name osC
+POST {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{fernandaId}}",
+  "veiculoId": "{{dailyId}}",
+  "observacoes": "OS-C (ordenacao) — vai para AGUARDANDO_APROVACAO"
+}
+
+###
+
+@osCId = {{osC.response.body.$.id}}
+
+###
+
+# Adiciona 1 item → OS-C passa de RECEBIDA para EM_DIAGNOSTICO
+POST {{baseUrl}}/ordens-de-servico/{{osCId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcRevisao}}",
+  "quantidade": 1
+}
+
+###
+
+# Avança status → OS-C passa de EM_DIAGNOSTICO para AGUARDANDO_APROVACAO
+# (também dispara o e-mail de orçamento — ver Seção 5)
+POST {{baseUrl}}/ordens-de-servico/{{osCId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 10.4 (opcional) Conferir o status de cada OS auxiliar
+GET {{baseUrl}}/ordens-de-servico/{{osAId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+GET {{baseUrl}}/ordens-de-servico/{{osBId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+GET {{baseUrl}}/ordens-de-servico/{{osCId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 10.5 COMPROVAÇÃO DA ORDENAÇÃO
+# Ordem esperada no início da lista:
+#   1) (se a OS principal estiver EM_EXECUCAO) — topo, peso 1
+#   2) OS-C  AGUARDANDO_APROVACAO  (peso 2)
+#   3) OS-B  EM_DIAGNOSTICO        (peso 3)
+#   4) OS-A  RECEBIDA              (peso 4)
+# Dentro do mesmo status, as mais antigas vêm primeiro.
+GET {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 10.6 COMPROVAÇÃO DA EXCLUSÃO LÓGICA
+# Pré-requisito: ter concluído as Seções 7 e 8 (OS principal ENTREGUE).
+# A OS principal ({{osNumero}}) NÃO deve aparecer nesta listagem,
+# assim como qualquer OS FINALIZADA — comprovando o filtro lógico
+# (as OS continuam no banco; apenas são omitidas da listagem operacional).
+GET {{baseUrl}}/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
