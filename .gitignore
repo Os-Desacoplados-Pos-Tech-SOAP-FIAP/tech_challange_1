@@ -152,3 +152,9 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+
+# Arquivos de trabalho do Claude (nao versionar)
+CLAUDE.md
+.claude/
+docs/superpowers/
+PROGRESS.md
