@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../../src/app.module';
@@ -10,6 +11,18 @@ import { createPrismaMock } from './prisma-mock';
 export interface TestContext {
   app: INestApplication;
   prisma: ReturnType<typeof createPrismaMock>;
+}
+
+/**
+ * Token de escopo CLIENTE, como o emitido pela lambda de auth por CPF.
+ * Usa o mesmo secret (e fallback) da JwtStrategy/PublicoModule.
+ */
+export function gerarTokenCliente(
+  sub = 'cliente-teste',
+  cpf = '52998224725',
+): string {
+  const jwt = new JwtService({ secret: process.env.JWT_SECRET ?? 'default-secret' });
+  return jwt.sign({ sub, cpf, scope: 'CLIENTE' });
 }
 
 export async function createTestApp(): Promise<TestContext> {

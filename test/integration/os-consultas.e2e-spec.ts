@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 
-import { createTestApp, TestContext } from '../helpers/setup';
+import { createTestApp, gerarTokenCliente, TestContext } from '../helpers/setup';
 
 interface SeededUser {
   id: string;
@@ -240,22 +240,42 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
     expect(res.status).toBe(404);
   });
 
-  // ── Rotas públicas ────────────────────────────────────────────────────────
+  // ── Rotas do cliente (JWT escopo CLIENTE emitido pela lambda de auth) ─────
 
-  it('GET /publico/os/:numero/status — rota pública, sem autenticação', async () => {
+  it('GET /publico/os/:numero/status — com token de cliente', async () => {
     const { numero } = await criarOS(atendenteToken);
 
     const res = await request(app.getHttpServer())
-      .get(`/api/publico/os/${numero}/status`);
+      .get(`/api/publico/os/${numero}/status`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`);
     expect(res.status).toBe(200);
     expect(res.body.numero).toBe(numero);
     expect(res.body.status).toBe('RECEBIDA');
     expect(res.body.valorEstimado).toBeDefined();
   });
 
+  it('GET /publico/os/:numero/status → 401 sem token de cliente', async () => {
+    const { numero } = await criarOS(atendenteToken);
+
+    const res = await request(app.getHttpServer()).get(
+      `/api/publico/os/${numero}/status`,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /publico/os/:numero/status → 401 com token de funcionário', async () => {
+    const { numero } = await criarOS(atendenteToken);
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/publico/os/${numero}/status`)
+      .set('Authorization', `Bearer ${atendenteToken}`);
+    expect(res.status).toBe(401);
+  });
+
   it('GET /publico/os/:numero/status → 404 para OS inexistente', async () => {
     const res = await request(app.getHttpServer())
-      .get('/api/publico/os/99998/status');
+      .get('/api/publico/os/99998/status')
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`);
     expect(res.status).toBe(404);
   });
 
@@ -267,7 +287,8 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
     });
 
     const res = await request(app.getHttpServer())
-      .get(`/api/publico/os/${numero}/orcamento?token=${token}`);
+      .get(`/api/publico/os/${numero}/orcamento?token=${token}`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`);
     expect(res.status).toBe(200);
     expect(res.body.numero).toBe(numero);
     expect(res.body.status).toBe('AGUARDANDO_APROVACAO');
@@ -283,7 +304,8 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
     });
 
     const res = await request(app.getHttpServer())
-      .get(`/api/publico/os/${numero}/orcamento?token=${token}`);
+      .get(`/api/publico/os/${numero}/orcamento?token=${token}`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`);
     expect(res.status).toBe(401);
   });
 
@@ -296,6 +318,7 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/api/publico/os/${numero}/orcamento/decisao`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .send({ token, decisao: 'APROVADA' });
     expect(res.status).toBe(201);
     expect(res.body.numero).toBe(numero);
@@ -311,6 +334,7 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/api/publico/os/${numero}/orcamento/decisao`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .send({ token, decisao: 'REPROVADA' });
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('REPROVADA');
@@ -325,6 +349,7 @@ describe('OS — consultas, listagem e rotas públicas (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post(`/api/publico/os/${numero}/orcamento/decisao`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .send({ token, decisao: 'APROVADA' });
     expect(res.status).toBe(401);
   });
