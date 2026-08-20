@@ -28,7 +28,7 @@ pelo Lambda authorizer no gateway e pelo `ClienteJwtGuard` na aplicação.
 
 Funcionários continuam autenticando por e-mail e senha em `POST /api/auth/login`, com
 autorização por perfil. Detalhes e alternativas descartadas em
-[`docs/rfc/003-autenticacao-por-cpf.md`](docs/rfc/003-autenticacao-por-cpf.md).
+[`docs/rfc-propostas-tecnicas/003-autenticacao-por-cpf.md`](docs/rfc-propostas-tecnicas/003-autenticacao-por-cpf.md).
 
 > ⚠️ **Mudança quebradora:** as rotas `/api/publico/*` deixaram de ser abertas e agora
 > exigem `Authorization: Bearer <token>`.
@@ -38,9 +38,13 @@ autorização por perfil. Detalhes e alternativas descartadas em
 - **Diagrama de componentes:** [`docs/diagramas/componentes-fase-3.md`](docs/diagramas/componentes-fase-3.md)
 - **Sequência — autenticação por CPF:** [`docs/diagramas/sequencia-autenticacao-cpf.md`](docs/diagramas/sequencia-autenticacao-cpf.md)
 - **Sequência — abertura de OS:** [`docs/diagramas/sequencia-abertura-os.md`](docs/diagramas/sequencia-abertura-os.md)
-- **ADRs:** [`docs/adr/`](docs/adr) — authorizer HS256, ALB com validação dupla, quatro
-  repositórios, HPA, segredos pela esteira, observabilidade
-- **RFCs:** [`docs/rfc/`](docs/rfc) — escolha da nuvem, banco gerenciado, autenticação
+- **Decisões arquiteturais (ADRs)** — decisões permanentes, com contexto e consequências:
+  [`docs/adr-decisoes-arquiteturais/`](docs/adr-decisoes-arquiteturais). São seis: authorizer
+  HS256, ALB com validação dupla, separação em quatro repositórios, HPA, segredos entregues
+  pela esteira e observabilidade.
+- **Propostas técnicas (RFCs)** — problema, opções avaliadas e recomendação:
+  [`docs/rfc-propostas-tecnicas/`](docs/rfc-propostas-tecnicas). São três: escolha da nuvem,
+  banco de dados gerenciado e estratégia de autenticação por CPF.
 
 ### Observabilidade
 

@@ -200,4 +200,4 @@ cada `apply` — atualize no dia da gravação.
 
 > Dashboards e alertas ficam **no Grafana Cloud**, não no cluster — por isso sobrevivem ao
 > `terraform destroy` e estarão prontos no dia da gravação (decisão registrada no
-> [ADR 006](../adr/006-observabilidade-otel-grafana-cloud.md)).
+> [ADR 006](../adr-decisoes-arquiteturais/006-observabilidade-otel-grafana-cloud.md)).
