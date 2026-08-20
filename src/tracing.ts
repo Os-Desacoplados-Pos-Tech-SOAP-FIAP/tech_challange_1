@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 // Bootstrap do OpenTelemetry. DEVE ser o primeiro import do main.ts: a
 // auto-instrumentação faz patch de http/express/pg no momento do require.
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';

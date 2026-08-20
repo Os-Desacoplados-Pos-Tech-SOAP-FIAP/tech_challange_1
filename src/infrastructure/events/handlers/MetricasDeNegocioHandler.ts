@@ -68,7 +68,7 @@ export class MetricasDeNegocioHandler {
   }
 
   @OnDomainEvent(EVENTS.OS_ORCAMENTO_RECUSADO)
-  public onRecusado(event: DomainEvent): void {
+  public onRecusado(_event: DomainEvent): void {
     this.emissor.incrementar('os_orcamentos_recusados_total');
   }
 
