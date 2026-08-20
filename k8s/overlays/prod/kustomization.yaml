@@ -6,8 +6,13 @@ namespace: oficina-mecanica
 resources:
   - ../../base
 
-# Produção usa os defaults da base (NODE_ENV=production, LOG_LEVEL=info).
-# Nas próximas issues, este overlay recebe:
-#   - a tag da imagem da API, injetada pelo cd.yml via `kustomize edit set image` (DEV-65);
-#   - o Secret sincronizado do AWS Secrets Manager pelo External Secrets Operator (DEV-62),
-#     substituindo o template `secret.yaml` da base.
+# O Secret real é injetado pelo CD a partir do AWS Secrets Manager (DATABASE_URL e
+# JWT_SECRET) — credenciais nunca são versionadas. Remove o template da base.
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: oficina-api-secret
+        namespace: oficina-mecanica
+      $patch: delete

@@ -1,9 +1,9 @@
 name: CD
 
-# Entrega contínua local: após o CI passar em `main`, a esteira faz o build da
-# imagem e o DEPLOY de verdade em um cluster Kubernetes (kind) efêmero, criado no
-# próprio runner. Assim o histórico do GitHub Actions contempla o Deploy sem
-# depender de AWS. O alvo de produção (EKS/RDS) está descrito em `infra/` (Terraform).
+# Entrega contínua real: após o CI passar em `main`, faz o build da imagem, publica
+# no ECR e faz o DEPLOY no cluster EKS (Kustomize overlay prod), injetando o Secret
+# a partir do AWS Secrets Manager. Verificado por `kubectl rollout status` e smoke
+# test em /api/health. Autenticação na AWS via OIDC (sem access keys).
 on:
   workflow_run:
     workflows: ['CI']
@@ -12,16 +12,24 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
 
 concurrency:
-  group: cd-local
-  cancel-in-progress: true
+  group: cd-eks
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT: '538880133939'
+  ROLE_ARN: arn:aws:iam::538880133939:role/gha-tech_challange_1
+  CLUSTER: oficina-mecanica
+  ECR_REPO: oficina-mecanica-api
+  NAMESPACE: oficina-mecanica
 
 jobs:
-  deploy-kind:
-    name: Build e Deploy (cluster kind efêmero)
-    # Roda no push de teste, no dispatch manual, ou quando o CI passou em main.
+  deploy:
+    name: Build, push e deploy no EKS
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
@@ -30,45 +38,92 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
-      - name: Build da imagem da API
-        run: docker build -f docker/Dockerfile -t oficina-mecanica-api:ci .
-
-      - name: Cria o cluster kind
-        uses: helm/kind-action@v1
+      - name: Credenciais AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          cluster_name: oficina-ci
-          node_image: kindest/node:v1.29.4
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Carrega a imagem no cluster kind
-        run: kind load docker-image oficina-mecanica-api:ci --name oficina-ci
-
-      - name: Deploy (Kustomize overlay de CI)
-        run: kubectl apply -k k8s/overlays/ci
-
-      - name: Aguarda o Postgres ficar pronto
-        run: kubectl wait --for=condition=ready pod -l app=postgres -n oficina-mecanica --timeout=180s
-
-      - name: Aguarda o rollout da API
-        id: rollout
-        # Cobre o initContainer de migrations + boot da app (readiness em /api/health).
-        run: kubectl rollout status deployment/oficina-api -n oficina-mecanica --timeout=300s
-
-      - name: Smoke test do endpoint /api/health
+      - name: Cluster disponível?
+        id: cluster
+        # A infra é provisionada sob demanda (apply/destroy por sessão). Sem cluster,
+        # o deploy é pulado com aviso em vez de falhar a esteira.
         run: |
-          POD=$(kubectl get pod -n oficina-mecanica -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
-          kubectl exec -n oficina-mecanica "$POD" -- wget -qO- http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status":"ok"'
+          STATUS=$(aws eks describe-cluster --name "$CLUSTER" --query cluster.status --output text 2>/dev/null || echo AUSENTE)
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" != "ACTIVE" ]; then
+            echo "::warning::Cluster $CLUSTER indisponivel ($STATUS) - infra derrubada? Deploy pulado."
+          fi
 
-      - name: Estado final do deploy
-        run: kubectl get deployment,svc,hpa,pods -n oficina-mecanica
+      - name: Login no ECR
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"
+          echo "ECR_URL=$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO" >> "$GITHUB_ENV"
+
+      - name: Build e push da imagem (tag = SHA imutável)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          docker build -f docker/Dockerfile -t "$ECR_URL:$GITHUB_SHA" .
+          docker push "$ECR_URL:$GITHUB_SHA"
+
+      - name: Kubeconfig
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: aws eks update-kubeconfig --name "$CLUSTER" --region "$AWS_REGION"
+
+      - name: Namespace e Secret (do AWS Secrets Manager)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id oficina-mecanica/DATABASE_URL --query SecretString --output text)
+          JWT_SECRET=$(aws secretsmanager get-secret-value --secret-id oficina-mecanica/JWT_SECRET --query SecretString --output text)
+          kubectl create secret generic oficina-api-secret -n "$NAMESPACE" \
+            --from-literal=DATABASE_URL="$DATABASE_URL" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy (Kustomize overlay prod)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          cd k8s/overlays/prod
+          kustomize edit set image "oficina-mecanica-api=$ECR_URL:$GITHUB_SHA"
+          kubectl apply -k .
+
+      - name: Rollout (cobre o initContainer de migrations)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        id: rollout
+        run: kubectl rollout status deployment/oficina-api -n "$NAMESPACE" --timeout=300s
+
+      - name: Seed do banco (primeira carga; ignora se já houver dados)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          POD=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n "$NAMESPACE" "$POD" -- npx --no-install prisma db seed \
+            || echo "::warning::seed nao aplicado (provavelmente dados ja existentes)"
+
+      - name: Smoke test /api/health
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          POD=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n "$NAMESPACE" "$POD" -- wget -qO- http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: Endereço público (ALB do Ingress)
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: |
+          kubectl get ingress oficina-api -n "$NAMESPACE" \
+            -o jsonpath='ALB: {.status.loadBalancer.ingress[0].hostname}{"\n"}' || true
+
+      - name: Estado final
+        if: steps.cluster.outputs.status == 'ACTIVE'
+        run: kubectl get deployment,svc,ingress,hpa,pods -n "$NAMESPACE"
 
       - name: Diagnóstico (somente em falha)
         if: failure()
         run: |
-          kubectl get all -n oficina-mecanica || true
-          kubectl describe pods -n oficina-mecanica || true
-          kubectl logs -n oficina-mecanica -l app.kubernetes.io/component=api --all-containers --tail=100 || true
+          kubectl get all -n "$NAMESPACE" || true
+          kubectl describe pods -n "$NAMESPACE" || true
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/component=api --all-containers --tail=100 || true
 
       - name: Rollback automático se o rollout falhar
-        # Só desfaz quando o ROLLOUT especificamente falhou (não em erro de apply).
         if: ${{ failure() && steps.rollout.outcome == 'failure' }}
-        run: kubectl rollout undo deployment/oficina-api -n oficina-mecanica || true
+        run: kubectl rollout undo deployment/oficina-api -n "$NAMESPACE" || true
