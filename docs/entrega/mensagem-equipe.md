@@ -1,68 +1,117 @@
 # Mensagem para o grupo — Fase 3
 
-> Copie o bloco abaixo e cole no grupo da equipe.
+Duas versões: a **curta** para colar no grupo e a **completa** para fixar no canal ou mandar
+em seguida, para quem quiser o detalhe.
 
 ---
 
-**Fase 3 — infra e código prontos, subi tudo, testei ponta a ponta e destruí 🚀**
+## Versão curta (cole no grupo)
 
-Pessoal, avancei bastante na Fase 3 e quero alinhar o que já está pronto e o que falta.
+> **Fase 3 — código e infraestrutura prontos ✅**
+>
+> Pessoal, terminei a parte técnica da Fase 3. Subi a stack inteira na AWS, testei o fluxo
+> ponta a ponta (autenticação por CPF → API Gateway → aplicação no EKS → banco) e **destruí
+> tudo depois**, para não gerar custo. Sobe de novo em ~40 min no dia da gravação.
+>
+> **Pronto:** 4 repositórios com CI/CD e deploy automático · Lambda de autenticação por CPF ·
+> API Gateway com authorizer · EKS com escala automática · RDS · Terraform · observabilidade
+> instrumentada · documentação completa (ADRs, RFCs, diagramas, roteiro do vídeo).
+>
+> **Falta (preciso de vocês):**
+> 1. 🎥 Gravar o vídeo — tem roteiro pronto, cena a cena
+> 2. 📊 Montar os dashboards no Grafana — conta já criada e conectada, faltam os painéis
+> 3. 📄 Montar o PDF da entrega — tem checklist pronto
+>
+> **Sobre a conta AWS:** usei minha conta pessoal (o AWS Academy não permite o tipo de
+> configuração que o desafio exige — explico no detalhe). O custo total do projeto deve
+> ficar entre **US$ 10 e US$ 20**, algo como **R$ 15 a R$ 25 por pessoa**. Proponho rachar.
+>
+> Quem topa pegar cada item? Detalhes e links dos documentos no próximo texto 👇
 
-**O que foi feito**
+---
 
-Separei o projeto nos 4 repositórios exigidos, cada um com CI/CD próprio e deploy
-automático, main protegida e merge só por Pull Request:
+## Versão completa
 
-1. **`tc-lambda-auth`** — função serverless de autenticação por CPF (valida o CPF, consulta
-   o cliente no banco e emite o JWT) + o Lambda authorizer do gateway
-2. **`tc-infra-kubernetes`** — Terraform da VPC, EKS, ECR e do API Gateway
-3. **`tc-infra-database`** — Terraform do RDS PostgreSQL 16 e do Secrets Manager
-4. **`tech_challange_1`** — a aplicação NestJS, manifestos do Kubernetes e a documentação
+**Fase 3 — o que está pronto, o que falta e quanto custa**
 
-**O que já foi testado de verdade (subi a stack completa na AWS e validei)**
+### 1. Cobertura dos requisitos do enunciado
 
-- Autenticação por CPF pelo API Gateway → devolve o JWT do cliente ✅
-- Rota protegida `/api/publico/*` **com** token → 200; **sem** token → 401 barrado no
-  próprio gateway ✅
-- CPF inválido → 400; CPF válido de cliente inexistente → 404 ✅
-- Login de funcionário e rotas internas passando pelo gateway ✅
-- Pipeline completo: PR → CI (lint, testes, cobertura 80%) → merge → build da imagem →
-  ECR → deploy no EKS → rollout → smoke test no `/api/health` ✅
-- Aplicação no ar no EKS com HPA de 2 a 10 réplicas e migrations rodando automaticamente ✅
+| Requisito | Status | Onde está |
+| --- | --- | --- |
+| API Gateway protegendo rotas sensíveis | ✅ Pronto e testado | `tc-infra-kubernetes/gateway/` |
+| Function serverless valida CPF, consulta o cliente e devolve JWT | ✅ As três etapas | `tc-lambda-auth` |
+| Quatro repositórios separados com CI/CD | ✅ Pronto | links no fim |
+| Branch main protegida, merge só por PR | ✅ Ativo nos 4 | Settings → Rules |
+| Deploy automático para a nuvem | ✅ Pronto | Actions de cada repo |
+| Banco de dados gerenciado | ✅ RDS PostgreSQL 16 | `tc-infra-database` |
+| Cluster Kubernetes com escalabilidade | ✅ EKS + HPA de 2 a 10 réplicas | `tc-infra-kubernetes` |
+| Terraform provisionando tudo | ✅ Pronto | repositórios de infra |
+| Logs estruturados com correlação | ✅ JSON com trace_id | aplicação instrumentada |
+| Latência, CPU/memória, healthcheck | ✅ Instrumentado | OpenTelemetry + Grafana Alloy |
+| Dashboards e alertas | ⏳ **Falta montar os painéis** | guia pronto no repositório |
+| Diagrama de componentes | ✅ Pronto | `docs/diagramas/` |
+| Diagramas de sequência (autenticação e abertura de OS) | ✅ Pronto | `docs/diagramas/` |
+| RFCs e ADRs | ✅ 3 RFCs + 6 ADRs | `docs/rfc-propostas-tecnicas/` e `docs/adr-decisoes-arquiteturais/` |
+| Justificativa do banco + modelo ER | ✅ Pronto | RFC 002 + `docs/DER.png` |
+| Vídeo de até 15 min | ⏳ **Falta gravar** | roteiro pronto |
+| PDF da entrega | ⏳ **Falta montar** | checklist pronto |
 
-**Depois de validar, destruí toda a infraestrutura** para não gerar gasto. A ideia é subir
-de novo só no dia da gravação do vídeo — sobe em ~40 min pelas próprias pipelines, grava, e
-derruba no fim.
+### 2. O que foi validado na prática
 
-**Sobre a conta AWS (importante)**
+Subi a stack completa na AWS e testei de ponta a ponta:
 
-Fiz o deploy na **minha conta pessoal da AWS**, e não no AWS Academy. Motivo técnico: o
-laboratório do Academy não deixa criar roles nem provedor de identidade IAM, o que
-inviabiliza o deploy por OIDC (o jeito seguro, sem colar credenciais no GitHub) e o IRSA que
-o Load Balancer Controller precisa. Com a conta pessoal a infraestrutura ficou do jeito
-"profissional" mesmo, que é o que o desafio pede.
+- Cliente autentica com CPF no API Gateway e recebe o token ✅
+- Rota protegida **com** token → 200; **sem** token → 401 barrado no próprio gateway ✅
+- CPF inválido → 400; CPF válido sem cadastro → 404 ✅
+- Login de funcionário e rotas internas funcionando pelo gateway ✅
+- Pipeline completo: PR → CI (lint, testes, cobertura de 80%) → merge → build da imagem →
+  ECR → deploy no EKS → rollout → smoke test ✅
+- Aplicação no ar com 2 réplicas, migrations e seed rodando sozinhos ✅
 
-Isso tem um custo pequeno, e a ideia é **rachar entre a equipe**. Para dar a ordem de
-grandeza: com tudo ligado a stack custa cerca de **US$ 6,50 por dia**, mas ela só fica de pé
-durante os testes — a sessão inteira de ontem, subindo, validando tudo e destruindo, ficou
-em **menos de US$ 1**. Somando os testes que já fiz e o dia da gravação, a conta toda deve
-ficar na casa de **US$ 10 a US$ 20 no total** (uns R$ 60 a R$ 110), divididos entre nós. Já
-deixei alertas de orçamento configurados e criei um gate de aprovação nas pipelines: nada
-sobe na AWS sem aprovação, justamente para ninguém gerar custo sem querer.
+Depois **destruí toda a infraestrutura**. A ideia é subir de novo só no dia da gravação.
 
-**O que falta e onde preciso de vocês**
+### 3. Sobre a conta AWS e o custo
 
-- 🎥 **Gravar o vídeo** (até 15 min) — deixei um **roteiro pronto, cena a cena**, com os
-  comandos e o passo a passo de subir a infra antes e destruir depois:
-  `docs/video/roteiro-fase-3.md`
-- 📊 **Observabilidade** — o código já está instrumentado (OpenTelemetry, logs JSON com
-  trace_id e métricas de negócio). Falta criar a conta no Grafana Cloud (free) e montar os
-  dashboards e alertas
-- 📄 **Montar o PDF final** da entrega — deixei o checklist pronto em
-  `docs/entrega/checklist-pdf.md`
-- ✅ Confirmar que o usuário **soat-architecture** aceitou o convite nos 4 repositórios
+Usei a **minha conta pessoal da AWS**, não o AWS Academy. O motivo é técnico: o laboratório
+do Academy não permite criar roles nem provedor de identidade IAM, o que inviabiliza o
+deploy autenticado por OIDC (o jeito seguro, sem colar credenciais no GitHub) e o IRSA de
+que o Load Balancer Controller precisa. Na conta pessoal a infraestrutura ficou do jeito que
+o desafio pede.
 
-**Documentos para vocês revisarem** (todos no repositório `tech_challange_1`)
+**O custo:**
+
+| Situação | Valor |
+| --- | --- |
+| Stack ligada 24 horas | ~US$ 6,50/dia |
+| Uma sessão de trabalho (sobe, testa, destrói) | menos de US$ 1 |
+| Estimativa do projeto inteiro (testes + gravação) | **US$ 10 a US$ 20** |
+| Por pessoa, rachando | **R$ 15 a R$ 25** |
+
+Duas travas que coloquei para ninguém gastar sem querer:
+
+- **Alertas de orçamento** em US$ 10, 30 e 50
+- **Aprovação obrigatória nas pipelines**: qualquer deploy na AWS fica parado esperando
+  minha liberação. Vocês continuam abrindo e mergeando PRs normalmente — o que precisa de
+  aprovação é só o que gera custo.
+
+### 4. O que falta — quem pega?
+
+| # | Tarefa | Esforço | Precisa da infra no ar? |
+| --- | --- | --- | --- |
+| 1 | **Gravar o vídeo** (até 15 min) seguindo `docs/video/roteiro-fase-3.md` | ~2h com os ensaios | Sim — eu subo antes |
+| 2 | **Montar 2 dashboards e 3 alertas** no Grafana (`docs/observability/setup-grafana-cloud.md`, Partes 5 a 8) | ~1h | Sim |
+| 3 | **Montar o PDF final** com `docs/entrega/checklist-pdf.md` | ~30 min | Não |
+| 4 | **Confirmar** que o `soat-architecture` aceitou o convite nos 4 repositórios | 5 min | Não |
+
+As tarefas 1 e 2 dão para fazer na mesma janela: eu subo a infraestrutura, quem for montar
+os dashboards monta, e na sequência gravamos o vídeo já com os painéis populados.
+
+**Combinem comigo a data** — subo a stack uns 40 minutos antes e passo as URLs (elas mudam a
+cada deploy).
+
+### 5. Documentos para revisarem
+
+Todos no repositório `tech_challange_1`:
 
 | Documento | Caminho |
 | --- | --- |
@@ -70,21 +119,23 @@ sobe na AWS sem aprovação, justamente para ninguém gerar custo sem querer.
 | Diagrama de componentes (nuvem, APIs, banco, monitoramento) | `docs/diagramas/componentes-fase-3.md` |
 | Diagrama de sequência — autenticação por CPF | `docs/diagramas/sequencia-autenticacao-cpf.md` |
 | Diagrama de sequência — abertura de OS | `docs/diagramas/sequencia-abertura-os.md` |
-| RFC 001 — escolha da nuvem (propostas técnicas) | `docs/rfc-propostas-tecnicas/001-escolha-da-nuvem.md` |
-| RFC 002 — banco de dados gerenciado + modelo ER | `docs/rfc-propostas-tecnicas/002-banco-gerenciado.md` |
-| RFC 003 — estratégia de autenticação por CPF | `docs/rfc-propostas-tecnicas/003-autenticacao-por-cpf.md` |
-| ADRs — decisões arquiteturais permanentes (6) | `docs/adr-decisoes-arquiteturais/` |
-| Coleção de requisições (sequência da apresentação) | `docs/oficina3.http` |
-| Guia para configurar o Grafana Cloud | `docs/observability/setup-grafana-cloud.md` |
-| Roteiro do vídeo | `docs/video/roteiro-fase-3.md` |
+| RFCs — propostas técnicas (nuvem, banco, autenticação) | `docs/rfc-propostas-tecnicas/` |
+| ADRs — decisões arquiteturais (6 registros) | `docs/adr-decisoes-arquiteturais/` |
+| Requisições da apresentação (fluxo completo) | `docs/oficina3.http` |
+| Roteiro do vídeo, cena a cena | `docs/video/roteiro-fase-3.md` |
+| Guia do Grafana Cloud | `docs/observability/setup-grafana-cloud.md` |
 | Checklist da entrega | `docs/entrega/checklist-pdf.md` |
 
-**Repositórios**
+**Para quem tem pouco tempo:** o README da Fase 3 e o diagrama de componentes dão o panorama
+em uns 10 minutos. As RFCs explicam *por que* cada escolha foi feita — útil se alguém do
+grupo for questionado sobre isso na avaliação.
 
-- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tech_challange_1
-- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-lambda-auth
-- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-kubernetes
-- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-database
+### 6. Repositórios
 
-Quem for gravar, me avisa com antecedência que eu subo a infra e passo as URLs (elas mudam
-a cada deploy). Qualquer dúvida sobre as decisões, está tudo justificado nos ADRs e RFCs.
+- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tech_challange_1 — aplicação e documentação
+- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-lambda-auth — autenticação por CPF
+- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-kubernetes — VPC, EKS, ECR, API Gateway
+- https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-database — RDS e Secrets Manager
+
+Qualquer dúvida sobre as decisões técnicas, está tudo justificado nas RFCs e ADRs — e se
+alguma escolha não fizer sentido para vocês, é só falar que a gente revisa.
