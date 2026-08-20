@@ -6,6 +6,11 @@ Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Aten
 
 ## Fase 2 — Kubernetes, Infraestrutura como Código e CI/CD
 
+> **Fase 3:** o Terraform desta seção migrou para repositórios dedicados —
+> [`tc-infra-kubernetes`](https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-kubernetes) (VPC, EKS, ECR)
+> e [`tc-infra-database`](https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-database) (RDS, Secrets Manager).
+> O estado da Fase 2 está preservado na branch [`fase-2`](../../tree/fase-2).
+
 > 🎥 **Vídeo demonstrativo:** [https://youtu.be/SwKqzc23xvA](https://youtu.be/SwKqzc23xvA)
 
 A Fase 2 leva a API para um ambiente **cloud-native** na AWS: a aplicação roda em **Kubernetes gerenciado (EKS)** com escalabilidade automática, banco gerenciado (**RDS Postgres 16**), imagens versionadas no **ECR** e segredos no **Secrets Manager** — tudo provisionado por **Terraform** e entregue por **GitHub Actions** (CI + CD).
