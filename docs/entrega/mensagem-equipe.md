@@ -22,9 +22,23 @@ em seguida, para quem quiser o detalhe.
 > 2. 📊 Montar os dashboards no Grafana — conta já criada e conectada, faltam os painéis
 > 3. 📄 Montar o PDF da entrega — tem checklist pronto
 >
+> **📅 Cronograma que proponho** — vou entrar de férias e **volto dia 08/09**. A entrega é
+> **15/09**, então sugiro fecharmos tudo em duas reuniões:
+> - **09/09 (terça), 19h30** — subo a infraestrutura, montamos os dashboards e gravamos
+> - **10/09 (quarta), 19h30** — ajustes finais, PDF e envio
+>
+> **Enquanto eu estiver fora**, o pedido é: **revisem e validem os fluxos que criei** (estão
+> todos no `docs/oficina3.http`, com os diagramas de sequência ao lado). Se algo não fizer
+> sentido, anotem que a gente ajusta na volta — melhor descobrir agora do que no dia 09.
+>
+> ⚠️ Só um aviso: **não vai dar para subir a AWS nesse período**, porque sou o único que
+> aprova o deploy nas pipelines (é a trava de custo). Revisão de código, documentação e PRs
+> seguem normalmente.
+>
 > **Sobre a conta AWS:** usei minha conta pessoal (o AWS Academy não permite o tipo de
 > configuração que o desafio exige — explico no detalhe). O custo total do projeto deve
-> ficar entre **US$ 10 e US$ 20**, algo como **R$ 15 a R$ 25 por pessoa**. Proponho rachar.
+> ficar entre **US$ 10 e US$ 20**; divididos entre nós quatro, dá algo como **R$ 15 a R$ 30
+> por pessoa**. Proponho rachar.
 >
 > Quem topa pegar cada item? Detalhes e links dos documentos no próximo texto 👇
 
@@ -85,7 +99,7 @@ o desafio pede.
 | Stack ligada 24 horas | ~US$ 6,50/dia |
 | Uma sessão de trabalho (sobe, testa, destrói) | menos de US$ 1 |
 | Estimativa do projeto inteiro (testes + gravação) | **US$ 10 a US$ 20** |
-| Por pessoa, rachando | **R$ 15 a R$ 25** |
+| Dividido entre os 4 membros | **R$ 15 a R$ 30 por pessoa** |
 
 Duas travas que coloquei para ninguém gastar sem querer:
 
@@ -94,7 +108,37 @@ Duas travas que coloquei para ninguém gastar sem querer:
   minha liberação. Vocês continuam abrindo e mergeando PRs normalmente — o que precisa de
   aprovação é só o que gera custo.
 
-### 4. O que falta — quem pega?
+### 4. Cronograma até a entrega
+
+Vou entrar de **férias** e **volto no dia 08/09**. A entrega é **15/09**. Proposta:
+
+| Data | O que fazemos |
+| --- | --- |
+| **De agora até 08/09** | Vocês **revisam e validam os fluxos e a documentação** (sem precisar de AWS) |
+| **09/09 (terça), 19h30** | Subo a infraestrutura, montamos os dashboards e alertas, gravamos o vídeo |
+| **10/09 (quarta), 19h30** | Ajustes do que faltar, edição finalizada, PDF montado e enviado |
+| **11 a 15/09** | Margem de segurança para imprevistos |
+
+Duas reuniões bastam porque a parte técnica já está pronta e testada — o que resta é montar
+painéis, gravar e documentar a entrega. A margem de cinco dias existe justamente para o caso
+de algo dar errado na gravação.
+
+**O que peço enquanto estou fora:**
+
+1. **Validem os fluxos** — o `docs/oficina3.http` tem a sequência completa que será
+   apresentada no vídeo (autenticação por CPF, rotas protegidas, abertura de OS, orçamento,
+   execução, entrega). Leiam junto com os diagramas de sequência e me digam se algum passo
+   está faltando ou se algo não representa bem o sistema.
+2. **Revisem as RFCs e os ADRs** — são as decisões técnicas que vamos ter que defender.
+3. **Leiam o roteiro do vídeo** e digam se falta alguma cena, principalmente quem for gravar.
+4. **Anotem as dúvidas** em vez de travar: respondo tudo na volta, dia 08/09.
+
+⚠️ **Não será possível subir a infraestrutura na AWS nesse período.** Eu sou o único
+aprovador do gate de deploy — é a trava que impede custo acidental. Tudo que não depende da
+nuvem (revisar código, documentação, abrir e mergear PRs, montar o rascunho do PDF) segue
+funcionando normalmente.
+
+### 5. O que falta — quem pega?
 
 | # | Tarefa | Esforço | Precisa da infra no ar? |
 | --- | --- | --- | --- |
@@ -103,13 +147,17 @@ Duas travas que coloquei para ninguém gastar sem querer:
 | 3 | **Montar o PDF final** com `docs/entrega/checklist-pdf.md` | ~30 min | Não |
 | 4 | **Confirmar** que o `soat-architecture` aceitou o convite nos 4 repositórios | 5 min | Não |
 
+Somos quatro: a sugestão é cada um pegar um item. As tarefas 3 e 4 podem ser feitas desde
+já, sem depender das reuniões.
+
 As tarefas 1 e 2 dão para fazer na mesma janela: eu subo a infraestrutura, quem for montar
 os dashboards monta, e na sequência gravamos o vídeo já com os painéis populados.
 
-**Combinem comigo a data** — subo a stack uns 40 minutos antes e passo as URLs (elas mudam a
-cada deploy).
+No dia **09/09** eu subo a stack uns 40 minutos antes da reunião e passo as URLs no grupo
+(elas mudam a cada deploy). Se as datas não funcionarem para alguém, me avisem agora que a
+gente remarca — o que não dá é deixar para a semana da entrega.
 
-### 5. Documentos para revisarem
+### 6. Documentos para revisarem
 
 Todos no repositório `tech_challange_1`:
 
@@ -130,7 +178,7 @@ Todos no repositório `tech_challange_1`:
 em uns 10 minutos. As RFCs explicam *por que* cada escolha foi feita — útil se alguém do
 grupo for questionado sobre isso na avaliação.
 
-### 6. Repositórios
+### 7. Repositórios
 
 - https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tech_challange_1 — aplicação e documentação
 - https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-lambda-auth — autenticação por CPF
