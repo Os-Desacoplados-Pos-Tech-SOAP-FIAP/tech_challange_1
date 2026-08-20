@@ -33,7 +33,9 @@ Base para montar o PDF único enviado no Portal do Aluno. Prazo: **15/09/2026**.
 | RFCs (nuvem, banco, autenticação) | `docs/rfc/` |
 | ADRs (6 decisões arquiteturais) | `docs/adr/` |
 | Justificativa do banco + modelo ER | `docs/rfc/002-banco-gerenciado.md` e `docs/DER.png` |
-| Coleção HTTP das APIs | `docs/oficina.http` |
+| Coleção HTTP da Fase 3 (sequência da apresentação) | `docs/oficina3.http` |
+| Coleções das fases anteriores | `docs/oficina.http`, `docs/oficina2.http` |
+| Guia de configuração do Grafana Cloud | `docs/observability/setup-grafana-cloud.md` |
 | Swagger / OpenAPI | `/api/docs` na aplicação publicada |
 | Roteiro do vídeo | `docs/video/roteiro-fase-3.md` |
 

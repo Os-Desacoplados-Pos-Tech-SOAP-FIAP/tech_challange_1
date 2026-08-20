@@ -1,0 +1,583 @@
+### =============================================================
+### Oficina Mecânica — REST Client (FASE 3)
+### Extensão: https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+###
+### Este arquivo cobre o fluxo da Fase 3 passando pelo API GATEWAY na AWS,
+### e é a sequência usada na apresentação/gravação do vídeo:
+###   - Seção 0  : Configuração (URLs geradas a cada deploy)
+###   - Seção 1  : Health check e Swagger (probes do K8s)
+###   - Seção 2  : Autenticação por CPF na função serverless (Lambda)
+###   - Seção 3  : Rotas do cliente protegidas pelo Lambda authorizer
+###   - Seção 4  : Autenticação de funcionário pelo gateway
+###   - Seção 5  : Cadastros e abertura de OS (rotas internas)
+###   - Seção 6  : Orçamento e aprovação pelo cliente autenticado por CPF
+###   - Seção 7  : Execução e entrega
+###   - Seção 8  : Métricas de negócio
+###   - Seção 9  : Geração de carga para os dashboards de observabilidade
+###   - Seção 10 : Checklist de evidências dos requisitos da Fase 3
+###
+### Como usar:
+###   1. Suba a infraestrutura (ver docs/video/roteiro-fase-3.md, Cena 0)
+###   2. Preencha @gateway na Seção 0 com a URL desta subida
+###   3. Execute na ordem; tokens e IDs são capturados automaticamente
+### =============================================================
+
+### ==============================================================
+### SEÇÃO 0 — CONFIGURAÇÃO
+###
+### As URLs mudam a cada `terraform apply`. Obtenha assim:
+###
+###   export AWS_PROFILE=hailton-aws
+###   aws apigatewayv2 get-apis \
+###     --query "Items[?Name=='oficina-mecanica-gateway'].ApiEndpoint" --output text
+###   aws elbv2 describe-load-balancers \
+###     --query 'LoadBalancers[0].DNSName' --output text
+### ==============================================================
+
+# Ponto de entrada oficial da aplicação (API Gateway)
+@gateway = https://SUBSTITUA.execute-api.us-east-1.amazonaws.com
+
+# Acesso direto ao ALB — usado apenas para abrir o Swagger no navegador
+# e para demonstrar que a validação do token também ocorre na aplicação
+@alb = http://SUBSTITUA.us-east-1.elb.amazonaws.com
+
+# Clientes do seed (CPF usado na autenticação serverless)
+@cpfAna       = 620.324.110-59
+@cpfCarlos    = 049.435.860-23
+@cpfJoao      = 587.603.570-02
+@cpfInvalido  = 111.111.111-11
+@cpfNaoCadastrado = 529.982.247-25
+
+# IDs fixos do seed
+@anaId           = 00000000-0000-4001-8000-000000000001
+@joaoId          = 00000000-0000-4001-8000-000000000004
+@golId           = 00000000-0000-4002-8000-000000000004
+@svcPastilhas    = 00000000-0000-4003-8000-000000000005
+@svcLimpezaBicos = 00000000-0000-4003-8000-000000000003
+@insPastilha     = 00000000-0000-4004-8000-000000000003
+
+
+### ==============================================================
+### SEÇÃO 1 — HEALTH CHECK E DOCUMENTAÇÃO
+### Requisito: endpoint público de saúde para os probes do Kubernetes.
+### Esperado: 200 { "status": "ok" }
+### ==============================================================
+
+### 1.1 Health check pelo gateway
+GET {{gateway}}/api/health
+
+###
+
+### 1.2 Health check direto no ALB (mesma resposta, sem passar pelo gateway)
+GET {{alb}}/api/health
+
+###
+
+### 1.3 Swagger — abra no navegador: {{alb}}/api/docs
+GET {{alb}}/api/docs
+
+###
+
+
+### ==============================================================
+### SEÇÃO 2 — AUTENTICAÇÃO POR CPF (FUNÇÃO SERVERLESS)
+###
+### Requisito da fase: a Lambda executa TRÊS etapas —
+###   1. valida o CPF (formato e dígitos verificadores)
+###   2. consulta a existência do cliente na base (RDS)
+###   3. gera e devolve um JWT válido para as APIs protegidas
+###
+### A Lambda roda na VPC, lê DATABASE_URL e JWT_SECRET do Secrets
+### Manager e assina o token com o mesmo segredo da aplicação.
+### ==============================================================
+
+### 2.1 Cliente autentica com CPF válido e cadastrado (Ana Lima)
+# Esperado: 200 { access_token, token_type, expires_in, cliente }
+# @name authCpf
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{
+  "cpf": "{{cpfAna}}"
+}
+
+###
+
+# Token de escopo CLIENTE capturado automaticamente
+@tokenCliente = {{authCpf.response.body.$.access_token}}
+
+###
+
+### 2.2 CPF inválido (dígitos verificadores não conferem)
+# Esperado: 400 { "code": "CPF_INVALIDO" }
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{
+  "cpf": "{{cpfInvalido}}"
+}
+
+###
+
+### 2.3 CPF válido, porém sem cadastro na base
+# Esperado: 404 { "code": "CLIENTE_NAO_ENCONTRADO" }
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{
+  "cpf": "{{cpfNaoCadastrado}}"
+}
+
+###
+
+### 2.4 Body sem o campo cpf
+# Esperado: 400 { "code": "CPF_INVALIDO" }
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{}
+
+###
+
+### 2.5 Autenticação de outro cliente (Carlos) — segundo token
+# @name authCarlos
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{
+  "cpf": "{{cpfCarlos}}"
+}
+
+###
+
+@tokenCarlos = {{authCarlos.response.body.$.access_token}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 3 — ROTAS DO CLIENTE (PROTEGIDAS PELO AUTHORIZER)
+###
+### Requisito: proteger rotas sensíveis com autenticação via CPF.
+### Validação dupla: o Lambda authorizer barra no gateway e o
+### ClienteJwtGuard revalida na aplicação (ADR 002).
+### ==============================================================
+
+### 3.1 Consulta de status COM token de cliente
+# Esperado: 200 com número, status e valor estimado da OS
+GET {{gateway}}/api/publico/os/1/status
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 3.2 Mesma rota SEM token
+# Esperado: 401 { "message": "Unauthorized" } — barrado no API GATEWAY,
+# a requisição nem chega na aplicação
+GET {{gateway}}/api/publico/os/1/status
+
+###
+
+### 3.3 Mesma rota com token malformado
+# Esperado: 401 — assinatura inválida
+GET {{gateway}}/api/publico/os/1/status
+Authorization: Bearer token-invalido-qualquer
+
+###
+
+### 3.4 Acesso DIRETO ao ALB sem token (contornando o gateway)
+# Esperado: 401 { "message": "Token de cliente ausente" } — desta vez
+# quem barra é a própria aplicação. Demonstra a validação dupla.
+GET {{alb}}/api/publico/os/1/status
+
+###
+
+### 3.5 Acesso direto ao ALB COM token de cliente
+# Esperado: 200 — o mesmo token vale nas duas portas
+GET {{alb}}/api/publico/os/1/status
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 3.6 OS inexistente com token válido
+# Esperado: 404 — autenticado, porém sem a OS
+GET {{gateway}}/api/publico/os/99999/status
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 4 — AUTENTICAÇÃO DE FUNCIONÁRIO PELO GATEWAY
+###
+### As rotas internas passam pela rota catch-all do gateway e são
+### validadas pela própria aplicação (JWT interno + perfil).
+### ==============================================================
+
+### 4.1 Login do atendente
+# @name loginAtendente
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "atendente@oficina.local",
+  "senha": "senha123"
+}
+
+###
+
+@atendenteToken = {{loginAtendente.response.body.$.accessToken}}
+
+###
+
+### 4.2 Login do administrador
+# @name loginAdmin
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@oficina.local",
+  "senha": "admin123"
+}
+
+###
+
+@adminToken = {{loginAdmin.response.body.$.accessToken}}
+
+###
+
+### 4.3 Login do mecânico
+# @name loginMecanico
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "mecanico1@oficina.local",
+  "senha": "senha123"
+}
+
+###
+
+@mecanicoToken = {{loginMecanico.response.body.$.accessToken}}
+
+###
+
+### 4.4 Rota interna SEM token
+# Esperado: 401 — validado pela aplicação
+GET {{gateway}}/api/ordens-de-servico
+
+###
+
+### 4.5 Rota interna com o TOKEN DE CLIENTE (escopo CLIENTE)
+# Esperado: 401 — o token do cliente não abre as APIs internas.
+# É a fronteira de autorização descrita na RFC 003.
+GET {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 4.6 Rota interna com token de funcionário
+# Esperado: 200 com a lista de OS em aberto
+GET {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 5 — CADASTROS E ABERTURA DE OS
+### Fluxo de negócio pelo gateway. Cada passo dispara eventos de
+### domínio que alimentam as métricas de negócio (Seção 9).
+### ==============================================================
+
+### 5.1 Listar clientes
+GET {{gateway}}/api/clientes
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 5.2 Buscar cliente pelo CPF usado na autenticação
+GET {{gateway}}/api/clientes/documento/62032411059
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 5.3 Listar veículos do cliente João Silva
+GET {{gateway}}/api/veiculos?clienteId={{joaoId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 5.4 Abrir uma nova Ordem de Serviço
+# Esperado: 201 com status RECEBIDA — dispara o evento OSCriada
+# @name criarOS
+POST {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{joaoId}}",
+  "veiculoId": "{{golId}}",
+  "observacoes": "Revisão apresentada no vídeo da Fase 3"
+}
+
+###
+
+@osId     = {{criarOS.response.body.$.id}}
+@osNumero = {{criarOS.response.body.$.numero}}
+
+###
+
+### 5.5 Consultar a OS recém-criada
+GET {{gateway}}/api/ordens-de-servico/{{osId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 6 — ORÇAMENTO E APROVAÇÃO PELO CLIENTE
+###
+### O cliente é identificado pelo JWT emitido a partir do CPF; o
+### token de uso único (enviado por e-mail) identifica o orçamento.
+### ==============================================================
+
+### 6.1 Adicionar serviço ao orçamento
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcPastilhas}}",
+  "quantidade": 1
+}
+
+###
+
+### 6.2 Adicionar segundo serviço
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "SERVICO",
+  "servicoId": "{{svcLimpezaBicos}}",
+  "quantidade": 1
+}
+
+###
+
+### 6.3 Adicionar insumo (peça)
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/itens
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "tipo": "INSUMO",
+  "insumoId": "{{insPastilha}}",
+  "quantidade": 2
+}
+
+###
+
+### 6.4 Avançar status: RECEBIDA → EM_DIAGNOSTICO
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 6.5 Avançar status: EM_DIAGNOSTICO → AGUARDANDO_APROVACAO
+# Dispara o envio do e-mail com o token do orçamento.
+# O ConsoleEmailProvider registra a mensagem no log da aplicação:
+#   kubectl logs -n oficina-mecanica -l app.kubernetes.io/component=api | grep -i token
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 6.6 Obter a OS com os IDs dos itens (necessário para a Seção 7)
+# @name getOS
+GET {{gateway}}/api/ordens-de-servico/{{osId}}
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+@itemId1 = {{getOS.response.body.$.itensOrcamento[0].id}}
+@itemId2 = {{getOS.response.body.$.itensOrcamento[1].id}}
+
+###
+
+### 6.7 Cliente consulta o status da própria OS
+GET {{gateway}}/api/publico/os/{{osNumero}}/status
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 6.8 Cliente consulta o orçamento
+# Substitua TOKEN_DO_EMAIL pelo token registrado no log da aplicação.
+@tokenOrcamento = TOKEN_DO_EMAIL
+
+GET {{gateway}}/api/publico/os/{{osNumero}}/orcamento?token={{tokenOrcamento}}
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 6.9 Cliente aprova o orçamento
+# Esperado: 201 com status APROVADA — dispara reserva de estoque
+POST {{gateway}}/api/publico/os/{{osNumero}}/orcamento/decisao
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "token": "{{tokenOrcamento}}",
+  "decisao": "APROVADA"
+}
+
+###
+
+### 6.10 Tentar reutilizar o token de orçamento
+# Esperado: 401 — token de uso único já consumido
+POST {{gateway}}/api/publico/os/{{osNumero}}/orcamento/decisao
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "token": "{{tokenOrcamento}}",
+  "decisao": "APROVADA"
+}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 7 — EXECUÇÃO E ENTREGA
+### Cada item de serviço exige duas chamadas (início e fim).
+### Ao concluir todos, a OS passa automaticamente a FINALIZADA.
+### ==============================================================
+
+### 7.1 Item 1 — início da execução (APROVADA → EM_EXECUCAO)
+POST {{gateway}}/api/itens-de-orcamento/{{itemId1}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.2 Item 1 — fim da execução
+POST {{gateway}}/api/itens-de-orcamento/{{itemId1}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.3 Item 2 — início da execução
+POST {{gateway}}/api/itens-de-orcamento/{{itemId2}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.4 Item 2 — fim da execução (OS → FINALIZADA, baixa de estoque)
+POST {{gateway}}/api/itens-de-orcamento/{{itemId2}}/execucoes
+Authorization: Bearer {{mecanicoToken}}
+
+###
+
+### 7.5 Cliente acompanha o status após a finalização
+GET {{gateway}}/api/publico/os/{{osNumero}}/status
+Authorization: Bearer {{tokenCliente}}
+
+###
+
+### 7.6 Entrega do veículo (FINALIZADA → ENTREGUE)
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 7.7 Transição inválida (OS já entregue)
+# Esperado: 422 { "code": "TRANSICAO_STATUS_INVALIDA" } — regra do domínio
+POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 8 — MÉTRICAS DE NEGÓCIO (ADMINISTRADOR)
+### ==============================================================
+
+### 8.1 Tempo médio de execução por serviço
+GET {{gateway}}/api/ordens-de-servico/metricas/tempo-medio
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 8.2 Listagem ordenada (execução → aguardando → diagnóstico → recebida)
+GET {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+### 8.3 Estoque após a baixa automática
+GET {{gateway}}/api/insumos
+Authorization: Bearer {{adminToken}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 9 — CARGA PARA OS DASHBOARDS DE OBSERVABILIDADE
+###
+### Execute várias vezes antes de mostrar os dashboards: cada OS
+### criada incrementa `os_criadas_total` e cada transição alimenta
+### o histograma `os_etapa_duracao_segundos`.
+###
+### No Grafana, observar em seguida:
+###   - Volume diário de OS e tempo médio por etapa (dashboard Negócio)
+###   - Latência e CPU/memória dos pods (dashboard Plataforma)
+###   - Logs JSON com trace_id e o trace correspondente
+### ==============================================================
+
+### 9.1 Criar OS adicional (repita 3 a 5 vezes)
+POST {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{atendenteToken}}
+Content-Type: application/json
+
+{
+  "clienteId": "{{anaId}}",
+  "veiculoId": "{{golId}}",
+  "observacoes": "Carga para dashboards"
+}
+
+###
+
+### 9.2 Sequência de autenticações por CPF (gera traces da Lambda)
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{
+  "cpf": "{{cpfJoao}}"
+}
+
+###
+
+### 9.3 Requisição que resulta em erro (alimenta a taxa de erro)
+GET {{gateway}}/api/ordens-de-servico/00000000-0000-4000-8000-000000000000
+Authorization: Bearer {{atendenteToken}}
+
+###
+
+
+### ==============================================================
+### SEÇÃO 10 — CHECKLIST DE EVIDÊNCIAS DA FASE 3
+###
+### Requisito                          | Onde comprovar
+### -----------------------------------|--------------------------------
+### API Gateway roteando a aplicação   | 1.1, 4.6 (catch-all para o ALB)
+### Rotas sensíveis com auth por CPF   | 3.1 vs 3.2 (200 com token, 401 sem)
+### Lambda valida CPF                  | 2.2 (400 CPF_INVALIDO)
+### Lambda consulta o cliente na base  | 2.3 (404 CLIENTE_NAO_ENCONTRADO)
+### Lambda gera e devolve o JWT        | 2.1 (access_token de escopo CLIENTE)
+### Separação de escopos               | 4.5 (token de cliente barrado nas rotas internas)
+### Validação dupla (gateway e app)    | 3.2 (401 no gateway) vs 3.4 (401 na aplicação)
+### Healthcheck para probes do K8s     | 1.1 e 1.2
+### Regras de domínio preservadas      | 7.7 (422 em transição inválida)
+### Métricas de negócio                | 8.1 e Seção 9 (dashboards)
+### ==============================================================
