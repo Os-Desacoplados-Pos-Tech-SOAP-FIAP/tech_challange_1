@@ -70,10 +70,10 @@ sobe na AWS sem aprovação, justamente para ninguém gerar custo sem querer.
 | Diagrama de componentes (nuvem, APIs, banco, monitoramento) | `docs/diagramas/componentes-fase-3.md` |
 | Diagrama de sequência — autenticação por CPF | `docs/diagramas/sequencia-autenticacao-cpf.md` |
 | Diagrama de sequência — abertura de OS | `docs/diagramas/sequencia-abertura-os.md` |
-| RFC 001 — escolha da nuvem | `docs/rfc/001-escolha-da-nuvem.md` |
-| RFC 002 — banco de dados gerenciado + modelo ER | `docs/rfc/002-banco-gerenciado.md` |
-| RFC 003 — estratégia de autenticação por CPF | `docs/rfc/003-autenticacao-por-cpf.md` |
-| ADRs (6 decisões arquiteturais) | `docs/adr/` |
+| RFC 001 — escolha da nuvem (propostas técnicas) | `docs/rfc-propostas-tecnicas/001-escolha-da-nuvem.md` |
+| RFC 002 — banco de dados gerenciado + modelo ER | `docs/rfc-propostas-tecnicas/002-banco-gerenciado.md` |
+| RFC 003 — estratégia de autenticação por CPF | `docs/rfc-propostas-tecnicas/003-autenticacao-por-cpf.md` |
+| ADRs — decisões arquiteturais permanentes (6) | `docs/adr-decisoes-arquiteturais/` |
 | Coleção de requisições (sequência da apresentação) | `docs/oficina3.http` |
 | Guia para configurar o Grafana Cloud | `docs/observability/setup-grafana-cloud.md` |
 | Roteiro do vídeo | `docs/video/roteiro-fase-3.md` |
