@@ -76,7 +76,7 @@ flowchart TB
 | Banco | RDS Postgres 16 `db.t3.micro` (subnet privada) | [`infra/rds.tf`](infra/rds.tf) |
 | Imagens/Segredos | ECR + Secrets Manager (`DATABASE_URL`, `JWT_SECRET`) | [`infra/ecr.tf`](infra/ecr.tf), [`infra/secrets.tf`](infra/secrets.tf) |
 | App no cluster | Deployment (initContainer de migrations), Service, Ingress ALB, HPA | [`k8s/base/`](k8s/base) |
-| Deploy local (CD) | Overlay para cluster `kind` (Postgres no cluster, sem Ingress ALB) | [`k8s/overlays/ci/`](k8s/overlays/ci) |
+| Deploy (CD) | Fase 2: overlay `kind` no runner. **Fase 3:** deploy real no EKS (build → ECR → `kubectl apply -k overlays/prod`) | [`k8s/overlays/prod/`](k8s/overlays/prod) |
 | Pipeline | CI (`ci.yml`) e CD (`cd.yml`, deploy em `kind` no runner) | [`.github/workflows/`](.github/workflows) |
 
 ### Como executar (Fase 2)
