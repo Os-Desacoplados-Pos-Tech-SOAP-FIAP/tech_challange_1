@@ -33,10 +33,17 @@ jobs:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve o commit a implantar
+        id: commit
+        # Em eventos workflow_run, GITHUB_SHA aponta para o head do branch no momento
+        # do gatilho — que pode diferir do commit que passou no CI. Fixamos UMA fonte
+        # de verdade e usamos o mesmo SHA no checkout e na tag da imagem.
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout (commit que passou no CI)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ steps.commit.outputs.sha }}
 
       - name: Credenciais AWS via OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -63,9 +70,17 @@ jobs:
 
       - name: Build e push da imagem (tag = SHA imutável)
         if: steps.cluster.outputs.status == 'ACTIVE'
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          docker build -f docker/Dockerfile -t "$ECR_URL:$GITHUB_SHA" .
-          docker push "$ECR_URL:$GITHUB_SHA"
+          # ECR com tags imutáveis: se a tag já existe, reaproveita a imagem em vez
+          # de falhar (re-deploy do mesmo commit é idempotente).
+          if aws ecr describe-images --repository-name "$ECR_REPO" --image-ids imageTag="$SHA" >/dev/null 2>&1; then
+            echo "Imagem $SHA ja publicada no ECR - reaproveitando."
+          else
+            docker build -f docker/Dockerfile -t "$ECR_URL:$SHA" .
+            docker push "$ECR_URL:$SHA"
+          fi
 
       - name: Kubeconfig
         if: steps.cluster.outputs.status == 'ACTIVE'
@@ -84,9 +99,11 @@ jobs:
 
       - name: Deploy (Kustomize overlay prod)
         if: steps.cluster.outputs.status == 'ACTIVE'
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
         run: |
           cd k8s/overlays/prod
-          kustomize edit set image "oficina-mecanica-api=$ECR_URL:$GITHUB_SHA"
+          kustomize edit set image "oficina-mecanica-api=$ECR_URL:$SHA"
           kubectl apply -k .
 
       - name: Rollout (cobre o initContainer de migrations)
