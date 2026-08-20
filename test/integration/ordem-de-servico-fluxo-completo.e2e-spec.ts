@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 
-import { createTestApp, TestContext } from '../helpers/setup';
+import { createTestApp, gerarTokenCliente, TestContext } from '../helpers/setup';
 
 interface SeededUser {
   id: string;
@@ -177,6 +177,7 @@ describe('Fluxo completo da OS: abertura → orçamento → execução → entre
     // 4) Consulta pública do orçamento com o token (rota aberta).
     const orcamento = await request(app.getHttpServer())
       .get(`/api/publico/os/${numero}/orcamento`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .query({ token });
     expect(orcamento.status).toBe(200);
     expect(orcamento.body.numero).toBe(numero);
@@ -187,6 +188,7 @@ describe('Fluxo completo da OS: abertura → orçamento → execução → entre
     // 5) Decisão pública: APROVADA → status APROVADA, token é consumido.
     const decisao = await request(app.getHttpServer())
       .post(`/api/publico/os/${numero}/orcamento/decisao`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .send({ token, decisao: 'APROVADA' });
     expect(decisao.status).toBe(201);
     expect(decisao.body.status).toBe('APROVADA');
@@ -194,6 +196,7 @@ describe('Fluxo completo da OS: abertura → orçamento → execução → entre
     // Token de uso único: a segunda tentativa é rejeitada (401).
     const reuso = await request(app.getHttpServer())
       .post(`/api/publico/os/${numero}/orcamento/decisao`)
+      .set('Authorization', `Bearer ${gerarTokenCliente()}`)
       .send({ token, decisao: 'APROVADA' });
     expect(reuso.status).toBe(401);
 

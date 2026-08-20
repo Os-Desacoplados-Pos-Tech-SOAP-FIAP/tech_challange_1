@@ -1,14 +1,20 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ConsultarOrcamentoPublicoUseCase } from '../../application/ordem-de-servico/consultar-orcamento-publico/ConsultarOrcamentoPublicoUseCase';
 import { ConsultarOSUseCase } from '../../application/ordem-de-servico/consultar-os/ConsultarOSUseCase';
 import { DecidirOrcamentoUseCase } from '../../application/ordem-de-servico/decidir-orcamento/DecidirOrcamentoUseCase';
 import { Public } from '../../common/decorators/public.decorator';
+import { ClienteJwtGuard } from '../../common/guards/cliente-jwt.guard';
 import { TipoItemOrcamento } from '../../domain/ordem-de-servico/entities/ItemOrcamento';
 import { DecidirOrcamentoDto } from './dto/decidir-orcamento.dto';
 
+// @Public() mantém os guards globais de FUNCIONÁRIO fora destas rotas; a proteção
+// aqui é o JWT de escopo CLIENTE (lambda de auth por CPF), validado também pelo
+// API Gateway (validação dupla — ADR 002).
 @ApiTags('Público')
+@ApiBearerAuth()
+@UseGuards(ClienteJwtGuard)
 @Controller('publico')
 export class PublicoController {
   constructor(
