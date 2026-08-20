@@ -5,6 +5,7 @@ import { EventDispatcher } from './EventDispatcher';
 import { BaixarEstoqueAoFinalizarHandler } from './handlers/BaixarEstoqueAoFinalizarHandler';
 import { GerarTokenOrcamentoHandler } from './handlers/GerarTokenOrcamentoHandler';
 import { LiberarReservasAoReprovarHandler } from './handlers/LiberarReservasAoReprovarHandler';
+import { MetricasDeNegocioHandler } from './handlers/MetricasDeNegocioHandler';
 import { LogDomainEventHandler } from './LogDomainEventHandler';
 import { PendingEventsRegistry } from './PendingEventsRegistry';
 
@@ -18,6 +19,7 @@ import { PendingEventsRegistry } from './PendingEventsRegistry';
     BaixarEstoqueAoFinalizarHandler,
     LiberarReservasAoReprovarHandler,
     GerarTokenOrcamentoHandler,
+    MetricasDeNegocioHandler,
   ],
   exports: [EventDispatcher, PendingEventsRegistry],
 })
