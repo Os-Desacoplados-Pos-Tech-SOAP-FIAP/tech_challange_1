@@ -4,6 +4,79 @@ Back-end em **NestJS** (TypeScript) para o MVP de um **Sistema Integrado de Aten
 
 > **Fase 1** entregou a API DDD com autenticação, regras de domínio da Ordem de Serviço e testes. **Fase 2** (abaixo) leva a aplicação para a nuvem: Kubernetes (EKS), Infraestrutura como Código (Terraform) e CI/CD (GitHub Actions). A documentação da Fase 1 segue íntegra após a seção da Fase 2.
 
+## Fase 3 — API Gateway, autenticação serverless e observabilidade
+
+A Fase 3 eleva a aplicação a uma operação corporativa: **API Gateway** como porta de
+entrada, **autenticação do cliente por CPF** em função serverless, projeto dividido em
+**quatro repositórios** com CI/CD independente e **observabilidade** ponta a ponta.
+
+### Repositórios
+
+| Repositório | Responsabilidade |
+| --- | --- |
+| **`tech_challange_1`** (este) | API NestJS, manifestos Kubernetes, documentação arquitetural |
+| [`tc-lambda-auth`](https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-lambda-auth) | Lambda de autenticação por CPF e Lambda authorizer |
+| [`tc-infra-kubernetes`](https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-kubernetes) | Terraform: VPC, EKS, ECR, API Gateway, observabilidade |
+| [`tc-infra-database`](https://github.com/Os-Desacoplados-Pos-Tech-SOAP-FIAP/tc-infra-database) | Terraform: RDS PostgreSQL 16 e Secrets Manager |
+
+### Autenticação por CPF
+
+O cliente externo chama `POST /auth` no API Gateway informando o CPF. A Lambda valida os
+dígitos, consulta a existência do cliente no RDS e devolve um **JWT de escopo `CLIENTE`**
+(HS256, 1 hora). Esse token é exigido nas rotas `/api/publico/*`, validado **duas vezes**:
+pelo Lambda authorizer no gateway e pelo `ClienteJwtGuard` na aplicação.
+
+Funcionários continuam autenticando por e-mail e senha em `POST /api/auth/login`, com
+autorização por perfil. Detalhes e alternativas descartadas em
+[`docs/rfc/003-autenticacao-por-cpf.md`](docs/rfc/003-autenticacao-por-cpf.md).
+
+> ⚠️ **Mudança quebradora:** as rotas `/api/publico/*` deixaram de ser abertas e agora
+> exigem `Authorization: Bearer <token>`.
+
+### Arquitetura e decisões
+
+- **Diagrama de componentes:** [`docs/diagramas/componentes-fase-3.md`](docs/diagramas/componentes-fase-3.md)
+- **Sequência — autenticação por CPF:** [`docs/diagramas/sequencia-autenticacao-cpf.md`](docs/diagramas/sequencia-autenticacao-cpf.md)
+- **Sequência — abertura de OS:** [`docs/diagramas/sequencia-abertura-os.md`](docs/diagramas/sequencia-abertura-os.md)
+- **ADRs:** [`docs/adr/`](docs/adr) — authorizer HS256, ALB com validação dupla, quatro
+  repositórios, HPA, segredos pela esteira, observabilidade
+- **RFCs:** [`docs/rfc/`](docs/rfc) — escolha da nuvem, banco gerenciado, autenticação
+
+### Observabilidade
+
+Instrumentação com **OpenTelemetry** exportando para o **Grafana Cloud**:
+
+- **Logs JSON** (`nestjs-pino`) com `trace_id` e `span_id` em cada linha, permitindo saltar
+  de um log direto para o trace correspondente.
+- **Traces e métricas** de HTTP e banco por auto-instrumentação.
+- **Métricas de negócio** derivadas dos *domain events* já existentes — volume de OS por
+  etapa e tempo entre transições — sem qualquer alteração nas camadas `domain`/`application`
+  (`src/infrastructure/events/handlers/MetricasDeNegocioHandler.ts`).
+- **Métricas do cluster** (CPU, memória, réplicas) coletadas pelo Grafana Alloy.
+
+### Como executar
+
+A infraestrutura é provisionada **pelas esteiras**, não por comandos locais. Na aba
+**Actions** de cada repositório, use **Run workflow** com `action: apply` na ordem:
+
+1. `tc-infra-kubernetes` → **Terraform** (VPC, EKS, ECR)
+2. `tc-infra-database` → **Terraform** (RDS, Secrets)
+3. `tc-lambda-auth` → **Pipeline** (funções)
+4. **este repositório** → **CD** (build, push no ECR e deploy no EKS)
+5. `tc-infra-kubernetes` → **Terraform Gateway** (API Gateway)
+
+Para destruir, o mesmo caminho com `action: destroy`, na **ordem inversa**. O passo a passo
+com verificações está em [`docs/video/roteiro-fase-3.md`](docs/video/roteiro-fase-3.md).
+
+Para desenvolvimento local, o `docker compose` da Fase 2 continua válido (seção abaixo).
+
+### Coleção de requisições
+
+[`docs/oficina.http`](docs/oficina.http) — a seção **FASE 3** cobre o fluxo pelo gateway:
+autenticação por CPF, rota protegida com e sem token, CPF inválido e rotas internas.
+
+---
+
 ## Fase 2 — Kubernetes, Infraestrutura como Código e CI/CD
 
 > **Fase 3:** o Terraform desta seção migrou para repositórios dedicados —

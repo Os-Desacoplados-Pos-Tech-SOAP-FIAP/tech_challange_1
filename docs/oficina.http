@@ -1,4 +1,75 @@
 ### =============================================================
+### FASE 3 — Fluxo pelo API Gateway (autenticacao por CPF)
+###
+### A URL do gateway muda a cada `terraform apply`. Obtenha com:
+###   aws apigatewayv2 get-apis --query "Items[?Name=='oficina-mecanica-gateway'].ApiEndpoint" --output text
+### e substitua abaixo. Use `@baseUrl` (localhost) apenas para desenvolvimento local.
+### =============================================================
+
+@gateway = https://SUBSTITUA.execute-api.us-east-1.amazonaws.com
+@cpfCliente = 620.324.110-59
+
+### F3.1 — Cliente autentica por CPF (Lambda serverless)
+# @name authCpf
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{ "cpf": "{{cpfCliente}}" }
+
+### Token capturado automaticamente da resposta acima
+@tokenCliente = {{authCpf.response.body.access_token}}
+
+### F3.2 — Cliente consulta o status da propria OS (authorizer valida o token)
+GET {{gateway}}/api/publico/os/1/status
+Authorization: Bearer {{tokenCliente}}
+
+### F3.3 — Mesma rota SEM token -> 401 barrado no API Gateway
+GET {{gateway}}/api/publico/os/1/status
+
+### F3.4 — CPF invalido -> 400 CPF_INVALIDO
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{ "cpf": "111.111.111-11" }
+
+### F3.5 — CPF valido de cliente inexistente -> 404 CLIENTE_NAO_ENCONTRADO
+POST {{gateway}}/auth
+Content-Type: application/json
+
+{ "cpf": "529.982.247-25" }
+
+### F3.6 — Healthcheck publico (usado pelos probes do Kubernetes)
+GET {{gateway}}/api/health
+
+### F3.7 — Login de funcionario pelo gateway (rota catch-all)
+# @name loginGateway
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@oficina.local", "senha": "admin123" }
+
+@tokenAdminGateway = {{loginGateway.response.body.accessToken}}
+
+### F3.8 — Rota interna com token de funcionario
+GET {{gateway}}/api/ordens-de-servico
+Authorization: Bearer {{tokenAdminGateway}}
+
+### F3.9 — Rota interna SEM token -> 401 (validado pela aplicacao)
+GET {{gateway}}/api/ordens-de-servico
+
+### F3.10 — Consulta de orcamento pelo cliente
+### (o token de uso unico chega por e-mail; o JWT identifica o cliente)
+GET {{gateway}}/api/publico/os/1/orcamento?token=TOKEN_DO_EMAIL
+Authorization: Bearer {{tokenCliente}}
+
+### F3.11 — Decisao do orcamento pelo cliente
+POST {{gateway}}/api/publico/os/1/orcamento/decisao
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{ "token": "TOKEN_DO_EMAIL", "decisao": "APROVADA" }
+
+### =============================================================
 ### Oficina Mecânica — REST Client
 ### Extensão: https://marketplace.visualstudio.com/items?itemName=humao.rest-client
 ###
