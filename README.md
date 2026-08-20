@@ -54,6 +54,9 @@ Instrumentação com **OpenTelemetry** exportando para o **Grafana Cloud**:
   (`src/infrastructure/events/handlers/MetricasDeNegocioHandler.ts`).
 - **Métricas do cluster** (CPU, memória, réplicas) coletadas pelo Grafana Alloy.
 
+Passo a passo para criar a conta e habilitar a coleta:
+[`docs/observability/setup-grafana-cloud.md`](docs/observability/setup-grafana-cloud.md).
+
 ### Como executar
 
 A infraestrutura é provisionada **pelas esteiras**, não por comandos locais. Na aba
@@ -72,8 +75,11 @@ Para desenvolvimento local, o `docker compose` da Fase 2 continua válido (seç�
 
 ### Coleção de requisições
 
-[`docs/oficina.http`](docs/oficina.http) — a seção **FASE 3** cobre o fluxo pelo gateway:
-autenticação por CPF, rota protegida com e sem token, CPF inválido e rotas internas.
+[`docs/oficina3.http`](docs/oficina3.http) — arquivo dedicado à Fase 3, com a sequência
+usada na apresentação: autenticação por CPF, rotas protegidas com e sem token, fluxo
+completo da OS pelo gateway e geração de carga para os dashboards. Os arquivos das fases
+anteriores seguem em [`docs/oficina.http`](docs/oficina.http) e
+[`docs/oficina2.http`](docs/oficina2.http).
 
 ---
 

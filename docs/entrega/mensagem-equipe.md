@@ -74,7 +74,8 @@ sobe na AWS sem aprovação, justamente para ninguém gerar custo sem querer.
 | RFC 002 — banco de dados gerenciado + modelo ER | `docs/rfc/002-banco-gerenciado.md` |
 | RFC 003 — estratégia de autenticação por CPF | `docs/rfc/003-autenticacao-por-cpf.md` |
 | ADRs (6 decisões arquiteturais) | `docs/adr/` |
-| Coleção de requisições (fluxo completo pelo gateway) | `docs/oficina.http` (seção "FASE 3") |
+| Coleção de requisições (sequência da apresentação) | `docs/oficina3.http` |
+| Guia para configurar o Grafana Cloud | `docs/observability/setup-grafana-cloud.md` |
 | Roteiro do vídeo | `docs/video/roteiro-fase-3.md` |
 | Checklist da entrega | `docs/entrega/checklist-pdf.md` |
 
