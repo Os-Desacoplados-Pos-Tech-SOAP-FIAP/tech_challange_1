@@ -1,15 +1,20 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+// OTel precisa ser carregado antes de qualquer módulo instrumentado.
+import './tracing';
+
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // bufferLogs: segura os logs do boot até o logger pino assumir.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
 
   app.setGlobalPrefix('api');
 
@@ -23,7 +28,6 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useGlobalFilters(new AllExceptionsFilter(), new DomainExceptionFilter());
-  app.useGlobalInterceptors(new LoggingInterceptor());
 
   app.enableCors();
 
@@ -39,7 +43,7 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') ?? 3000;
   await app.listen(port);
-  Logger.log(`Oficina API rodando em http://localhost:${port}/api`, 'Bootstrap');
+  app.get(Logger).log(`Oficina API rodando em http://localhost:${port}/api`);
 }
 
 bootstrap();
