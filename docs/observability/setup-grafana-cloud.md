@@ -27,20 +27,44 @@ métricas, 50 GB de logs, 50 GB de traces e 3 usuários.
 
 ## Parte 2 — Obter as três credenciais (5 min)
 
-1. No menu lateral, vá em **Connections → Add new connection**.
-2. Pesquise por **OpenTelemetry** e abra o card **OpenTelemetry (OTLP)**.
-3. A página mostra a configuração do endpoint. Anote:
+O caminho mais direto é o assistente **OpenTelemetry setup** (aparece no *Getting started
+guide* logo após criar a conta, ou em **Connections → Add new connection → OpenTelemetry**).
 
-| Credencial | Onde aparece | Formato |
+1. Em *Where does your application run?*, escolha **Kubernetes** → **Next**.
+2. Em *Choose your method*, escolha a opção de **Helm / Alloy**.
+3. Quando ele pedir, **crie um token de acesso** com o nome `tech-challenge-fase3`.
+4. A tela final exibe uma configuração (`values.yaml` ou comando `helm install`). É dela que
+   saem as três credenciais:
+
+```yaml
+destinations:
+  - url: https://otlp-gateway-prod-us-east-2.grafana.net/otlp   # OTLP Endpoint
+    auth:
+      username: "1234567"                                       # Instance ID
+      password: "glc_eyJvIjoi..."                               # Token
+```
+
+> ⚠️ **Não execute o comando de instalação sugerido pelo assistente.** O chart
+> `k8s-monitoring` já é instalado pelo Terraform (`tc-infra-kubernetes/observability.tf`).
+> Do assistente aproveitamos apenas as credenciais — instalar por fora criaria uma
+> instalação duplicada, fora do controle da infraestrutura como código.
+
+| Credencial | De onde vem | Formato |
 | --- | --- | --- |
-| **OTLP Endpoint** | campo *OTLP Endpoint* | `https://otlp-gateway-prod-us-east-2.grafana.net/otlp` |
-| **Instance ID** | campo *Instance ID* / *Username* | número, ex.: `1234567` |
-| **Token** | botão **Generate now** (nomeie `tech-challenge-fase3`) | começa com `glc_` |
+| **OTLP Endpoint** | campo `url` | `https://otlp-gateway-prod-us-east-2.grafana.net/otlp` |
+| **Instance ID** | campo `username` | número, ex.: `1234567` |
+| **Token** | campo `password` | começa com `glc_` |
 
-> ⚠️ O token aparece **uma única vez**. Copie antes de sair da página. Se perder, gere
-> outro em **Security → Access Policies**.
+O token aparece **uma única vez**: copie antes de sair da página. Se perder, gere outro em
+**Administration → Users and access → Access policies** (escopos de escrita para métricas,
+logs e traces).
 
----
+### Sobre o aviso de trial
+
+A conta nova costuma iniciar com um **trial do plano Pro de 14 dias**. Quando ele termina, a
+conta **não é encerrada**: passa automaticamente para o plano **Free** permanente, cujos
+limites (10 mil séries, 50 GB de logs, 50 GB de traces) seguem muito acima do consumo deste
+projeto. Não é necessário cadastrar cartão.
 
 ## Parte 3 — Cadastrar os segredos no repositório (2 min)
 
