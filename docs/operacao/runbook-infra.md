@@ -93,7 +93,9 @@ gravar a cena de arquitetura.
 ```bash
 export AWS_PROFILE=hailton-aws
 
-# 1. Usuário com senha de console, sem chave de acesso programático
+# 1. Usuário com senha de console, sem chave de acesso programático.
+#    A senha vai aqui apenas no momento de executar — NUNCA salve o arquivo com ela.
+#    Política da conta: 8+ caracteres com maiúscula, minúscula, número E símbolo.
 aws iam create-user --user-name gravacao-fase3
 aws iam create-login-profile --user-name gravacao-fase3 \
   --password 'TROQUE-POR-UMA-SENHA-FORTE'
