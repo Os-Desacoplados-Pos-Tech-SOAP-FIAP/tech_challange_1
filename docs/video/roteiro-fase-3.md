@@ -99,6 +99,59 @@ repositório da aplicação.
 | Atendente | `atendente@oficina.local` / `senha123` |
 | Mecânico | `mecanico1@oficina.local` / `senha123` |
 
+### 0.6 Acesso à AWS para quem vai gravar
+
+A Cena 2 mostra o console da AWS. Se quem grava não for o dono da conta, precisa de um
+acesso próprio — **de leitura apenas**.
+
+> Alternativa sem criar usuário: o dono da conta compartilha a tela (ou grava só a Cena 2)
+> e o restante segue normalmente. Se der para fazer assim, é o caminho mais simples.
+
+O dono da conta executa:
+
+```bash
+export AWS_PROFILE=hailton-aws
+
+# 1. Usuário com senha de console (sem chave de acesso programático)
+aws iam create-user --user-name gravacao-fase3
+aws iam create-login-profile --user-name gravacao-fase3 \
+  --password 'TROQUE-POR-UMA-SENHA-FORTE' --password-reset-required
+
+# 2. Leitura de toda a conta. Esta política NÃO permite ler valor de segredo
+#    (concede secretsmanager:GetResourcePolicy, não GetSecretValue).
+aws iam attach-user-policy --user-name gravacao-fase3 \
+  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
+
+# 3. Bloqueio do bucket de state: o tfstate guarda a senha do RDS e o JWT_SECRET
+#    em texto plano, e o ReadOnlyAccess sozinho permitiria baixá-lo.
+aws iam put-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate \
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"s3:*","Resource":["arn:aws:s3:::tc-fase3-tfstate-538880133939","arn:aws:s3:::tc-fase3-tfstate-538880133939/*"]}]}'
+```
+
+Login: **https://538880133939.signin.aws.amazon.com/console** · usuário `gravacao-fase3`
+(a senha é trocada no primeiro acesso — faça isso antes de começar a gravar).
+
+### 0.7 Links diretos dos serviços (região us-east-1)
+
+Deixe estas abas abertas na ordem da Cena 2:
+
+| # | Serviço | Link |
+| --- | --- | --- |
+| 1 | **VPC** (3 AZs, subnets, NAT) | https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#VpcDetails:VpcId=vpc-058d488b2b034cda3 |
+| 2 | **EKS** — cluster `oficina-mecanica` | https://us-east-1.console.aws.amazon.com/eks/clusters/oficina-mecanica?region=us-east-1 |
+| 3 | **EKS** — nós do cluster | https://us-east-1.console.aws.amazon.com/eks/clusters/oficina-mecanica?region=us-east-1&selectedTab=cluster-compute-tab |
+| 4 | **ECR** — imagens da API | https://us-east-1.console.aws.amazon.com/ecr/repositories/private/538880133939/oficina-mecanica-api?region=us-east-1 |
+| 5 | **RDS** — `oficina-mecanica-db` | https://us-east-1.console.aws.amazon.com/rds/home?region=us-east-1#database:id=oficina-mecanica-db;is-cluster=false |
+| 6 | **Lambda** — as duas funções | https://us-east-1.console.aws.amazon.com/lambda/home?region=us-east-1#/functions |
+| 7 | **API Gateway** — `oficina-mecanica-gateway` | https://us-east-1.console.aws.amazon.com/apigateway/main/apis/6v6iatjx3c/routes?region=us-east-1&api=6v6iatjx3c |
+| 8 | **Load Balancer** (criado pelo Ingress) | https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#LoadBalancers: |
+| 9 | **Secrets Manager** | https://us-east-1.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-1 |
+| 10 | **Budgets** (controle de custo) | https://us-east-1.console.aws.amazon.com/costmanagement/home#/budgets |
+
+> ⚠️ Os links **1, 4 e 7** contêm identificadores desta subida (VPC, API Gateway). Se a
+> infraestrutura for destruída e recriada, eles mudam — nesse caso use a listagem do
+> serviço. Os demais links são estáveis.
+
 ---
 
 ## Cena 1 — Abertura e estrutura de repositórios · 1 min
@@ -321,6 +374,19 @@ aws ec2 describe-vpcs --filters Name=isDefault,Values=false --query 'Vpcs[].VpcI
 ```
 
 Todas as respostas devem ser listas vazias.
+
+**Remover o acesso de gravação** (se o usuário da etapa 0.6 foi criado):
+
+```bash
+aws iam delete-login-profile --user-name gravacao-fase3
+aws iam detach-user-policy --user-name gravacao-fase3 \
+  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
+aws iam delete-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate
+aws iam delete-user --user-name gravacao-fase3
+```
+
+Um usuário IAM não gera custo, mas acesso temporário que sobrevive ao seu propósito vira
+porta aberta esquecida. Confirme com `aws iam list-users`.
 
 ---
 
