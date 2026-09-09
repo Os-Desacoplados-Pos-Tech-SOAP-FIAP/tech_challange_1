@@ -33,35 +33,21 @@ comandos estão prontos para copiar e colar, e cada cena indica **o que mostrar 
 
 ---
 
-## Cena 0 — Preparação (ANTES de gravar, ~40 minutos)
+## Cena 0 — Preparação (ANTES de gravar, ~10 minutos)
 
 > Nada desta cena entra no vídeo.
 
-### 0.1 Subir a infraestrutura
+### 0.1 Pré-requisito: ambiente no ar
 
-Em cada repositório: aba **Actions** → workflow indicado → **Run workflow** →
-`action: apply`. **Cada execução para aguardando aprovação** (gate de custo): clique em
-**Review deployments** → marque `aws-infra` → **Approve and deploy**.
+Este roteiro assume a infraestrutura já provisionada. Subir e derrubar é procedimento
+operacional e está em **`docs/operacao/runbook-infra.md`** — combine com o responsável pela
+conta AWS antes de marcar a gravação.
 
-| Ordem | Repositório | Workflow | Tempo |
-| --- | --- | --- | --- |
-| 1 | `tc-infra-kubernetes` | Terraform | ~20 min |
-| 2 | `tc-infra-database` | Terraform | ~10 min |
-| 3 | `tc-lambda-auth` | Pipeline | ~2 min |
-| 4 | `tech_challange_1` | CD | ~5 min |
-| 5 | `tc-infra-kubernetes` | Terraform Gateway | ~2 min |
+### 0.2 Conferir as URLs desta subida
 
-### 0.2 Anotar as URLs desta subida
-
-```bash
-export AWS_PROFILE=hailton-aws
-# API Gateway (usado na maioria das cenas)
-aws apigatewayv2 get-apis --query "Items[?Name=='oficina-mecanica-gateway'].ApiEndpoint" --output text
-# ALB (usado para abrir o Swagger)
-aws elbv2 describe-load-balancers --query 'LoadBalancers[0].DNSName' --output text
-```
-
-Preencha `@gateway` e `@alb` no topo de **`docs/oficina3.http`**.
+`docs/oficina3.http` já vem preenchido com as URLs da última subida. **Se a infraestrutura
+tiver sido recriada desde então, elas mudaram** — peça as novas a quem subiu (o comando está
+no runbook) e atualize as duas primeiras variáveis do arquivo.
 
 > A Cena 7 exige os dashboards importados no Grafana Cloud. Se ainda não estiverem lá,
 > siga a Parte 6 de `docs/observability/setup-grafana-cloud.md` — são dois JSON prontos
@@ -69,8 +55,10 @@ Preencha `@gateway` e `@alb` no topo de **`docs/oficina3.http`**.
 
 ### 0.3 Conferir que está tudo de pé antes de gravar
 
+Execute as seções **1** e **2.1** do `docs/oficina3.http`, ou pelo terminal:
+
 ```bash
-GW=<url do gateway>
+GW=https://6v6iatjx3c.execute-api.us-east-1.amazonaws.com
 curl -s "$GW/api/health"                                                   # {"status":"ok"}
 curl -s -X POST "$GW/auth" -H 'content-type: application/json' \
   -d '{"cpf":"620.324.110-59"}'                                            # 200 com access_token
@@ -82,11 +70,10 @@ repositório da aplicação.
 
 1. GitHub: a organização com os 4 repositórios
 2. GitHub: aba **Actions** do `tech_challange_1`
-3. AWS: **EKS** → cluster `oficina-mecanica` → aba *Compute*
-4. AWS: **RDS**, **Lambda**, **API Gateway**, **ECR** (uma aba cada)
-5. Grafana Cloud: os dois dashboards
-6. Navegador: Swagger em `http://<ALB>/api/docs`
-7. VS Code: `docs/oficina3.http`
+3. AWS: as abas do console — links prontos na seção **0.6**
+4. Grafana Cloud: os dois dashboards
+5. Navegador: Swagger em `{{alb}}/api/docs`
+6. VS Code: `docs/oficina3.http`
 
 ### 0.5 Dados de teste
 
@@ -99,41 +86,9 @@ repositório da aplicação.
 | Atendente | `atendente@oficina.local` / `senha123` |
 | Mecânico | `mecanico1@oficina.local` / `senha123` |
 
-### 0.6 Acesso à AWS para quem vai gravar
+### 0.6 Links diretos dos serviços (região us-east-1)
 
-A Cena 2 mostra o console da AWS. Se quem grava não for o dono da conta, precisa de um
-acesso próprio — **de leitura apenas**.
-
-> Alternativa sem criar usuário: o dono da conta compartilha a tela (ou grava só a Cena 2)
-> e o restante segue normalmente. Se der para fazer assim, é o caminho mais simples.
-
-O dono da conta executa:
-
-```bash
-export AWS_PROFILE=hailton-aws
-
-# 1. Usuário com senha de console (sem chave de acesso programático)
-aws iam create-user --user-name gravacao-fase3
-aws iam create-login-profile --user-name gravacao-fase3 \
-  --password 'TROQUE-POR-UMA-SENHA-FORTE' --password-reset-required
-
-# 2. Leitura de toda a conta. Esta política NÃO permite ler valor de segredo
-#    (concede secretsmanager:GetResourcePolicy, não GetSecretValue).
-aws iam attach-user-policy --user-name gravacao-fase3 \
-  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-
-# 3. Bloqueio do bucket de state: o tfstate guarda a senha do RDS e o JWT_SECRET
-#    em texto plano, e o ReadOnlyAccess sozinho permitiria baixá-lo.
-aws iam put-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate \
-  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"s3:*","Resource":["arn:aws:s3:::tc-fase3-tfstate-538880133939","arn:aws:s3:::tc-fase3-tfstate-538880133939/*"]}]}'
-```
-
-Login: **https://538880133939.signin.aws.amazon.com/console** · usuário `gravacao-fase3`
-(a senha é trocada no primeiro acesso — faça isso antes de começar a gravar).
-
-### 0.7 Links diretos dos serviços (região us-east-1)
-
-Deixe estas abas abertas na ordem da Cena 2:
+Abra nesta ordem — é a mesma sequência da Cena 2:
 
 | # | Serviço | Link |
 | --- | --- | --- |
@@ -352,41 +307,17 @@ pode ser criada e destruída sob demanda, o que mantém o custo do projeto sob c
 
 ## Depois de gravar (IMPORTANTE)
 
-Destruir a infraestrutura na ordem inversa — aba **Actions** de cada repositório,
-`action: destroy`, aprovando cada execução:
+**Avise imediatamente o responsável pela conta AWS de que a gravação terminou.** A
+infraestrutura cobra por hora enquanto estiver de pé — o procedimento de destruição, a
+conferência de que nada sobrou e a remoção do acesso temporário estão em
+**`docs/operacao/runbook-infra.md`**.
 
-1. `tc-infra-kubernetes` → **Terraform Gateway**
-2. `tc-lambda-auth` → **Pipeline**
-3. `tc-infra-database` → **Terraform**
-4. `tc-infra-kubernetes` → **Terraform** (remove sozinho o ALB e os security groups órfãos)
+Antes de encerrar, confirme que o material está completo:
 
-Conferir que não sobrou nada cobrando:
-
-```bash
-export AWS_PROFILE=hailton-aws
-aws eks list-clusters --query clusters
-aws rds describe-db-instances --query 'DBInstances[].DBInstanceIdentifier'
-aws ec2 describe-nat-gateways --filter Name=state,Values=available --query 'NatGateways[].NatGatewayId'
-aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'
-aws lambda list-functions --query 'Functions[].FunctionName'
-aws apigatewayv2 get-apis --query 'Items[].Name'
-aws ec2 describe-vpcs --filters Name=isDefault,Values=false --query 'Vpcs[].VpcId'
-```
-
-Todas as respostas devem ser listas vazias.
-
-**Remover o acesso de gravação** (se o usuário da etapa 0.6 foi criado):
-
-```bash
-aws iam delete-login-profile --user-name gravacao-fase3
-aws iam detach-user-policy --user-name gravacao-fase3 \
-  --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
-aws iam delete-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate
-aws iam delete-user --user-name gravacao-fase3
-```
-
-Um usuário IAM não gera custo, mas acesso temporário que sobrevive ao seu propósito vira
-porta aberta esquecida. Confirme com `aws iam list-users`.
+- [ ] Vídeo gravado por inteiro, dentro dos 15 minutos
+- [ ] Todas as 8 cenas presentes
+- [ ] Áudio audível e tela legível na resolução de publicação
+- [ ] Vídeo publicado no YouTube como **não listado** e o link anotado
 
 ---
 
@@ -396,7 +327,10 @@ porta aberta esquecida. Confirme com `aws iam list-users`.
 | --- | --- |
 | `/auth` responde 404 para o CPF do seed | O banco está sem dados: rode o workflow **CD** da aplicação e repita |
 | Rotas respondem 503 ou não conectam | O ALB pode ter acabado de subir; aguarde 2 minutos |
-| O CD para em "Cluster disponível?" | A infraestrutura foi destruída; refaça a Cena 0 |
+| O CD para em "Cluster disponível?" | A infraestrutura foi destruída; acione quem administra a conta AWS |
 | Dashboards vazios | Execute a Seção 9 do `oficina3.http` e aguarde ~1 minuto |
-| Um workflow fica parado sem rodar | Está aguardando aprovação: **Review deployments** → aprovar |
-| `terraform destroy` falha com erro de lock | `aws s3 rm s3://tc-fase3-tfstate-538880133939/infra-kubernetes/terraform.tfstate.tflock` e repita |
+| Um workflow fica parado sem rodar | Está aguardando aprovação do dono da conta — chame no grupo |
+| Erro de token no fluxo do orçamento | O token do e-mail é de uso único; refaça a partir da Seção 6.4 com uma OS nova |
+
+Problemas de infraestrutura (lock de state, destroy travado, acesso ao cluster) estão em
+`docs/operacao/runbook-infra.md`.

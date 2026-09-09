@@ -25,7 +25,8 @@
 ### ==============================================================
 ### SEÇÃO 0 — CONFIGURAÇÃO
 ###
-### As URLs mudam a cada `terraform apply`. Obtenha assim:
+### Os valores abaixo são da subida de 09/09/2026 e funcionam enquanto ela estiver de pé.
+### Se a infraestrutura for destruída e recriada, as URLs MUDAM. Obtenha as novas assim:
 ###
 ###   export AWS_PROFILE=hailton-aws
 ###   aws apigatewayv2 get-apis \
@@ -35,11 +36,11 @@
 ### ==============================================================
 
 # Ponto de entrada oficial da aplicação (API Gateway)
-@gateway = https://SUBSTITUA.execute-api.us-east-1.amazonaws.com
+@gateway = https://6v6iatjx3c.execute-api.us-east-1.amazonaws.com
 
 # Acesso direto ao ALB — usado apenas para abrir o Swagger no navegador
 # e para demonstrar que a validação do token também ocorre na aplicação
-@alb = http://SUBSTITUA.us-east-1.elb.amazonaws.com
+@alb = http://k8s-oficinam-oficinaa-52b283592a-853015037.us-east-1.elb.amazonaws.com
 
 # Clientes do seed (CPF usado na autenticação serverless)
 @cpfAna       = 620.324.110-59
