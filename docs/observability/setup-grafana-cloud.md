@@ -131,9 +131,25 @@ Se as métricas não aparecerem em ~2 minutos, veja os logs do coletor:
 
 ---
 
-## Parte 6 — Dashboard "Oficina — Negócio" (10 min)
+## Parte 6 — Importar os dois dashboards (3 min)
 
-**Dashboards → New → New dashboard**, e adicione os painéis abaixo (fonte: Prometheus).
+Os dashboards já estão prontos neste repositório — **não é preciso montar painel por
+painel**. Para cada um dos arquivos abaixo:
+
+1. **Dashboards → New → Import**
+2. Cole o conteúdo do arquivo no campo *Import via dashboard JSON model* → **Load**
+3. Em *Fonte de dados*, escolha o Prometheus do seu stack (normalmente
+   `grafanacloud-<stack>-prom`) → **Import**
+
+| Arquivo | Dashboard | Painéis |
+| --- | --- | --- |
+| `docs/observability/dashboard-negocio.json` | **Oficina — Negócio** | 7 |
+| `docs/observability/dashboard-plataforma.json` | **Oficina — Plataforma** | 9 |
+
+> Se um painel aparecer vazio, gere carga com a **Seção 9** do `oficina3.http` e aguarde
+> cerca de 2 minutos — as métricas só existem depois que o fluxo é exercitado.
+
+### O que cada painel do "Oficina — Negócio" mostra
 
 | Painel | Tipo | Consulta |
 | --- | --- | --- |
@@ -148,11 +164,9 @@ Se as métricas não aparecerem em ~2 minutos, veja os logs do coletor:
 > Prometheus. Se uma consulta não retornar nada, digite o prefixo `os_` no campo de métrica
 > do Explore para ver a lista exata.
 
-Salve como **Oficina — Negócio**.
-
 ---
 
-## Parte 7 — Dashboard "Oficina — Plataforma" (10 min)
+## Parte 7 — O que cada painel do "Oficina — Plataforma" mostra
 
 | Painel | Tipo | Consulta |
 | --- | --- | --- |
@@ -163,10 +177,9 @@ Salve como **Oficina — Negócio**.
 | Memória por pod | Time series | `sum by (pod) (container_memory_working_set_bytes{namespace="oficina-mecanica"})` |
 | Réplicas ativas (HPA) | Stat | `kube_deployment_status_replicas{namespace="oficina-mecanica"}` |
 
-Salve como **Oficina — Plataforma**.
-
-**Exportar para o repositório** (evidência da entrega): em cada dashboard,
-**Share → Export → Save to file**, e salve os JSON em `docs/observability/`.
+> Os JSON versionados em `docs/observability/` já são a evidência da entrega. Se você
+> ajustar algum painel no Grafana, exporte de volta com **Share → Export → Save to file**
+> para manter o repositório em dia.
 
 ---
 

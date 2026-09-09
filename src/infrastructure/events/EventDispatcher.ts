@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
+import { metrics } from '@opentelemetry/api';
 
 import { DomainEvent } from '../../domain/shared/DomainEvent';
 import { EVENT_HANDLER_METADATA } from './OnDomainEvent.decorator';
@@ -10,6 +11,15 @@ type Handler = (event: DomainEvent) => Promise<void> | void;
 export class EventDispatcher implements OnModuleInit {
   private readonly logger = new Logger(EventDispatcher.name);
   private readonly handlers = new Map<symbol, Handler[]>();
+
+  // Falha de handler não interrompe o fluxo de negócio, então sem esta métrica
+  // o erro só existiria no log. É a série que alimenta o alerta de falha no
+  // processamento de eventos.
+  private readonly errosDeProcessamento = metrics
+    .getMeter('oficina-negocio')
+    .createCounter('os_processamento_erros_total', {
+      description: 'Handlers de eventos de domínio que falharam',
+    });
 
   constructor(
     private readonly discovery: DiscoveryService,
@@ -52,6 +62,7 @@ export class EventDispatcher implements OnModuleInit {
         try {
           await handler(event);
         } catch (err) {
+          this.errosDeProcessamento.add(1);
           this.logger.error(
             `Handler falhou para evento ${event.eventName} (id=${event.eventId}): ${
               (err as Error).message
