@@ -33,35 +33,21 @@ comandos estão prontos para copiar e colar, e cada cena indica **o que mostrar 
 
 ---
 
-## Cena 0 — Preparação (ANTES de gravar, ~40 minutos)
+## Cena 0 — Preparação (ANTES de gravar, ~10 minutos)
 
 > Nada desta cena entra no vídeo.
 
-### 0.1 Subir a infraestrutura
+### 0.1 Pré-requisito: ambiente no ar
 
-Em cada repositório: aba **Actions** → workflow indicado → **Run workflow** →
-`action: apply`. **Cada execução para aguardando aprovação** (gate de custo): clique em
-**Review deployments** → marque `aws-infra` → **Approve and deploy**.
+Este roteiro assume a infraestrutura já provisionada. Subir e derrubar é procedimento
+operacional e está em **`docs/operacao/runbook-infra.md`** — combine com o responsável pela
+conta AWS antes de marcar a gravação.
 
-| Ordem | Repositório | Workflow | Tempo |
-| --- | --- | --- | --- |
-| 1 | `tc-infra-kubernetes` | Terraform | ~20 min |
-| 2 | `tc-infra-database` | Terraform | ~10 min |
-| 3 | `tc-lambda-auth` | Pipeline | ~2 min |
-| 4 | `tech_challange_1` | CD | ~5 min |
-| 5 | `tc-infra-kubernetes` | Terraform Gateway | ~2 min |
+### 0.2 Conferir as URLs desta subida
 
-### 0.2 Anotar as URLs desta subida
-
-```bash
-export AWS_PROFILE=hailton-aws
-# API Gateway (usado na maioria das cenas)
-aws apigatewayv2 get-apis --query "Items[?Name=='oficina-mecanica-gateway'].ApiEndpoint" --output text
-# ALB (usado para abrir o Swagger)
-aws elbv2 describe-load-balancers --query 'LoadBalancers[0].DNSName' --output text
-```
-
-Preencha `@gateway` e `@alb` no topo de **`docs/oficina3.http`**.
+`docs/oficina3.http` já vem preenchido com as URLs da última subida. **Se a infraestrutura
+tiver sido recriada desde então, elas mudaram** — peça as novas a quem subiu (o comando está
+no runbook) e atualize as duas primeiras variáveis do arquivo.
 
 > A Cena 7 exige os dashboards importados no Grafana Cloud. Se ainda não estiverem lá,
 > siga a Parte 6 de `docs/observability/setup-grafana-cloud.md` — são dois JSON prontos
@@ -69,8 +55,10 @@ Preencha `@gateway` e `@alb` no topo de **`docs/oficina3.http`**.
 
 ### 0.3 Conferir que está tudo de pé antes de gravar
 
+Execute as seções **1** e **2.1** do `docs/oficina3.http`, ou pelo terminal:
+
 ```bash
-GW=<url do gateway>
+GW=https://6v6iatjx3c.execute-api.us-east-1.amazonaws.com
 curl -s "$GW/api/health"                                                   # {"status":"ok"}
 curl -s -X POST "$GW/auth" -H 'content-type: application/json' \
   -d '{"cpf":"620.324.110-59"}'                                            # 200 com access_token
@@ -82,11 +70,10 @@ repositório da aplicação.
 
 1. GitHub: a organização com os 4 repositórios
 2. GitHub: aba **Actions** do `tech_challange_1`
-3. AWS: **EKS** → cluster `oficina-mecanica` → aba *Compute*
-4. AWS: **RDS**, **Lambda**, **API Gateway**, **ECR** (uma aba cada)
-5. Grafana Cloud: os dois dashboards
-6. Navegador: Swagger em `http://<ALB>/api/docs`
-7. VS Code: `docs/oficina3.http`
+3. AWS: as abas do console — links prontos na seção **0.6**
+4. Grafana Cloud: os dois dashboards
+5. Navegador: Swagger em `{{alb}}/api/docs`
+6. VS Code: `docs/oficina3.http`
 
 ### 0.5 Dados de teste
 
@@ -98,6 +85,27 @@ repositório da aplicação.
 | Administrador | `admin@oficina.local` / `admin123` |
 | Atendente | `atendente@oficina.local` / `senha123` |
 | Mecânico | `mecanico1@oficina.local` / `senha123` |
+
+### 0.6 Links diretos dos serviços (região us-east-1)
+
+Abra nesta ordem — é a mesma sequência da Cena 2:
+
+| # | Serviço | Link |
+| --- | --- | --- |
+| 1 | **VPC** (3 AZs, subnets, NAT) | https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#VpcDetails:VpcId=vpc-058d488b2b034cda3 |
+| 2 | **EKS** — cluster `oficina-mecanica` | https://us-east-1.console.aws.amazon.com/eks/clusters/oficina-mecanica?region=us-east-1 |
+| 3 | **EKS** — nós do cluster | https://us-east-1.console.aws.amazon.com/eks/clusters/oficina-mecanica?region=us-east-1&selectedTab=cluster-compute-tab |
+| 4 | **ECR** — imagens da API | https://us-east-1.console.aws.amazon.com/ecr/repositories/private/538880133939/oficina-mecanica-api?region=us-east-1 |
+| 5 | **RDS** — `oficina-mecanica-db` | https://us-east-1.console.aws.amazon.com/rds/home?region=us-east-1#database:id=oficina-mecanica-db;is-cluster=false |
+| 6 | **Lambda** — as duas funções | https://us-east-1.console.aws.amazon.com/lambda/home?region=us-east-1#/functions |
+| 7 | **API Gateway** — `oficina-mecanica-gateway` | https://us-east-1.console.aws.amazon.com/apigateway/main/apis/6v6iatjx3c/routes?region=us-east-1&api=6v6iatjx3c |
+| 8 | **Load Balancer** (criado pelo Ingress) | https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#LoadBalancers: |
+| 9 | **Secrets Manager** | https://us-east-1.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-1 |
+| 10 | **Budgets** (controle de custo) | https://us-east-1.console.aws.amazon.com/costmanagement/home#/budgets |
+
+> ⚠️ Os links **1, 4 e 7** contêm identificadores desta subida (VPC, API Gateway). Se a
+> infraestrutura for destruída e recriada, eles mudam — nesse caso use a listagem do
+> serviço. Os demais links são estáveis.
 
 ---
 
@@ -299,28 +307,17 @@ pode ser criada e destruída sob demanda, o que mantém o custo do projeto sob c
 
 ## Depois de gravar (IMPORTANTE)
 
-Destruir a infraestrutura na ordem inversa — aba **Actions** de cada repositório,
-`action: destroy`, aprovando cada execução:
+**Avise imediatamente o responsável pela conta AWS de que a gravação terminou.** A
+infraestrutura cobra por hora enquanto estiver de pé — o procedimento de destruição, a
+conferência de que nada sobrou e a remoção do acesso temporário estão em
+**`docs/operacao/runbook-infra.md`**.
 
-1. `tc-infra-kubernetes` → **Terraform Gateway**
-2. `tc-lambda-auth` → **Pipeline**
-3. `tc-infra-database` → **Terraform**
-4. `tc-infra-kubernetes` → **Terraform** (remove sozinho o ALB e os security groups órfãos)
+Antes de encerrar, confirme que o material está completo:
 
-Conferir que não sobrou nada cobrando:
-
-```bash
-export AWS_PROFILE=hailton-aws
-aws eks list-clusters --query clusters
-aws rds describe-db-instances --query 'DBInstances[].DBInstanceIdentifier'
-aws ec2 describe-nat-gateways --filter Name=state,Values=available --query 'NatGateways[].NatGatewayId'
-aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'
-aws lambda list-functions --query 'Functions[].FunctionName'
-aws apigatewayv2 get-apis --query 'Items[].Name'
-aws ec2 describe-vpcs --filters Name=isDefault,Values=false --query 'Vpcs[].VpcId'
-```
-
-Todas as respostas devem ser listas vazias.
+- [ ] Vídeo gravado por inteiro, dentro dos 15 minutos
+- [ ] Todas as 8 cenas presentes
+- [ ] Áudio audível e tela legível na resolução de publicação
+- [ ] Vídeo publicado no YouTube como **não listado** e o link anotado
 
 ---
 
@@ -330,7 +327,10 @@ Todas as respostas devem ser listas vazias.
 | --- | --- |
 | `/auth` responde 404 para o CPF do seed | O banco está sem dados: rode o workflow **CD** da aplicação e repita |
 | Rotas respondem 503 ou não conectam | O ALB pode ter acabado de subir; aguarde 2 minutos |
-| O CD para em "Cluster disponível?" | A infraestrutura foi destruída; refaça a Cena 0 |
+| O CD para em "Cluster disponível?" | A infraestrutura foi destruída; acione quem administra a conta AWS |
 | Dashboards vazios | Execute a Seção 9 do `oficina3.http` e aguarde ~1 minuto |
-| Um workflow fica parado sem rodar | Está aguardando aprovação: **Review deployments** → aprovar |
-| `terraform destroy` falha com erro de lock | `aws s3 rm s3://tc-fase3-tfstate-538880133939/infra-kubernetes/terraform.tfstate.tflock` e repita |
+| Um workflow fica parado sem rodar | Está aguardando aprovação do dono da conta — chame no grupo |
+| Erro de token no fluxo do orçamento | O token do e-mail é de uso único; refaça a partir da Seção 6.4 com uma OS nova |
+
+Problemas de infraestrutura (lock de state, destroy travado, acesso ao cluster) estão em
+`docs/operacao/runbook-infra.md`.
