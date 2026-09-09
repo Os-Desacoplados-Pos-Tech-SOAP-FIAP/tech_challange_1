@@ -1,0 +1,144 @@
+{
+  "title": "Oficina — Negócio",
+  "description": "Métricas de negócio emitidas a partir dos eventos de domínio da Ordem de Serviço.",
+  "tags": ["oficina", "fase-3", "negocio"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Fonte de dados",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Ordens de serviço abertas (24h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(os_criadas_total[24h]))", "legendFormat": "abertas" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Finalizadas / Entregues (24h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(os_finalizadas_total[24h]))", "legendFormat": "finalizadas" },
+        { "refId": "B", "expr": "sum(increase(os_entregues_total[24h]))", "legendFormat": "entregues" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Diagnósticos concluídos (24h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(os_diagnosticos_total[24h]))", "legendFormat": "diagnósticos" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Falhas no processamento de eventos (1h)",
+      "description": "Handlers de eventos de domínio que lançaram exceção. Alimenta o alerta de falha no processamento.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(os_processamento_erros_total[1h]))", "legendFormat": "falhas" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Ordens de serviço criadas ao longo do tempo",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(os_criadas_total[5m])) * 300", "legendFormat": "OS por 5 min" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Orçamentos aprovados x recusados",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "recusados" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "aprovados" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(os_orcamentos_aprovados_total[1h]))", "legendFormat": "aprovados" },
+        { "refId": "B", "expr": "sum(increase(os_orcamentos_recusados_total[1h]))", "legendFormat": "recusados" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Tempo médio por etapa da OS",
+      "description": "Média de os_etapa_duracao_segundos por etapa. Medido apenas quando as duas pontas da transição caem no mesmo pod (ver ADR de observabilidade).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 13 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 80 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "xTickLabelRotation": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (etapa) (rate(os_etapa_duracao_segundos_sum[1h])) / sum by (etapa) (rate(os_etapa_duracao_segundos_count[1h]))",
+          "legendFormat": "{{etapa}}",
+          "instant": true
+        }
+      ]
+    }
+  ]
+}

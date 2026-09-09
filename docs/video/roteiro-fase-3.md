@@ -63,6 +63,10 @@ aws elbv2 describe-load-balancers --query 'LoadBalancers[0].DNSName' --output te
 
 Preencha `@gateway` e `@alb` no topo de **`docs/oficina3.http`**.
 
+> A Cena 7 exige os dashboards importados no Grafana Cloud. Se ainda não estiverem lá,
+> siga a Parte 6 de `docs/observability/setup-grafana-cloud.md` — são dois JSON prontos
+> em `docs/observability/`, importados em cerca de 3 minutos.
+
 ### 0.3 Conferir que está tudo de pé antes de gravar
 
 ```bash
@@ -273,7 +277,8 @@ Continuar no `docs/oficina3.http`:
    linha de log eu chego direto no rastreamento completo da requisição."
 
 4. **Alertas** — abrir **Alerting → Alert rules** e mostrar as três regras: falha no
-   processamento de ordens de serviço, latência alta e disponibilidade do healthcheck.
+   processamento de eventos, latência alta (p95 > 2s) e aplicação indisponível (nenhuma
+   réplica disponível).
 
 ---
 
