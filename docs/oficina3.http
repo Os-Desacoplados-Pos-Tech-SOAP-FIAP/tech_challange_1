@@ -178,7 +178,9 @@ GET {{gateway}}/api/publico/os/1/status
 ###
 
 ### 3.3 Mesma rota com token malformado
-# Esperado: 401 — assinatura inválida
+# Esperado: 403 — o authorizer roda, rejeita a assinatura e nega o acesso.
+# Difere do 3.2 de propósito: sem token o gateway responde 401 (não autenticado);
+# com token inválido, 403 (autenticação apresentada e recusada).
 GET {{gateway}}/api/publico/os/1/status
 Authorization: Bearer token-invalido-qualquer
 
@@ -380,19 +382,25 @@ Content-Type: application/json
 
 ###
 
-### 6.4 Avançar status: RECEBIDA → EM_DIAGNOSTICO
+### 6.4 Avançar status: EM_DIAGNOSTICO → AGUARDANDO_APROVACAO
+# Esperado: 200 com status AGUARDANDO_APROVACAO.
+#
+# Atenção: basta UMA chamada aqui. Adicionar o primeiro item (6.1) já move a OS
+# de RECEBIDA para EM_DIAGNOSTICO automaticamente — é regra do domínio, em
+# OrdemDeServico.adicionarItem(). Uma segunda chamada devolveria
+# 422 OS_SEM_AVANCO_DISPONIVEL, porque de AGUARDANDO_APROVACAO só se sai pela
+# decisão do cliente (6.9).
+#
+# Esta transição dispara o e-mail com o token do orçamento.
 POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
 Authorization: Bearer {{atendenteToken}}
 
 ###
 
-### 6.5 Avançar status: EM_DIAGNOSTICO → AGUARDANDO_APROVACAO
-# Dispara o envio do e-mail com o token do orçamento.
-# O ConsoleEmailProvider registra a mensagem no log da aplicação:
-#   kubectl logs -n oficina-mecanica -l app.kubernetes.io/component=api | grep -i token
-POST {{gateway}}/api/ordens-de-servico/{{osId}}/status
-Authorization: Bearer {{atendenteToken}}
-
+### 6.5 Obter o token do orçamento no log da aplicação
+# O ConsoleEmailProvider registra o e-mail no log; o token sai daí.
+# Execute no terminal (não é uma requisição):
+#   kubectl logs -n oficina-mecanica -l app.kubernetes.io/component=api --tail=200 | grep -i token
 ###
 
 ### 6.6 Obter a OS com os IDs dos itens (necessário para a Seção 7)
