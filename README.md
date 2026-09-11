@@ -331,3 +331,4 @@ npm run docker:down       # docker-compose down
 ## Licença
 
 Projeto acadêmico — Pós-graduação em Arquitetura de Software (FIAP).
+<!-- demonstracao da pipeline da Fase 3 -->
