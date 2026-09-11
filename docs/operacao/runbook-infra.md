@@ -114,12 +114,14 @@ aws iam put-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate \
 ```bash
 # 4. Visibilidade dentro do cluster (lista de nodes e pods no console do EKS).
 #    O ReadOnlyAccess cobre só a API da AWS; nodes e pods vêm da API do Kubernetes,
-#    que exige uma access entry. AmazonEKSViewPolicy = somente leitura.
+#    que exige uma access entry. Use AmazonEKSAdminViewPolicy (leitura do cluster
+#    inteiro) — a AmazonEKSViewPolicy NÃO serve: cobre só recursos de namespace e
+#    falha com "nodes is forbidden" na aba Compute.
 aws eks create-access-entry --cluster-name oficina-mecanica \
   --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 --type STANDARD
 aws eks associate-access-policy --cluster-name oficina-mecanica \
   --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy \
   --access-scope type=cluster
 ```
 
