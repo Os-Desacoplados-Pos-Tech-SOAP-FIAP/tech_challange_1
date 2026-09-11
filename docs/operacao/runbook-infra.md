@@ -111,6 +111,18 @@ aws iam put-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"s3:*","Resource":["arn:aws:s3:::tc-fase3-tfstate-538880133939","arn:aws:s3:::tc-fase3-tfstate-538880133939/*"]}]}'
 ```
 
+```bash
+# 4. Visibilidade dentro do cluster (lista de nodes e pods no console do EKS).
+#    O ReadOnlyAccess cobre só a API da AWS; nodes e pods vêm da API do Kubernetes,
+#    que exige uma access entry. AmazonEKSViewPolicy = somente leitura.
+aws eks create-access-entry --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 --type STANDARD
+aws eks associate-access-policy --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy \
+  --access-scope type=cluster
+```
+
 Login: **https://538880133939.signin.aws.amazon.com/console** · usuário `gravacao-fase3`.
 Entrega a senha por canal privado, nunca pelo grupo. Como o acesso é descartado logo após
 o uso, não há troca de senha no primeiro acesso — apague o usuário assim que terminar.
@@ -118,6 +130,10 @@ o uso, não há troca de senha no primeiro acesso — apague o usuário assim qu
 ### Remover quando não precisar mais
 
 ```bash
+# Primeiro a access entry (se o cluster ainda existir — o destroy também a remove)
+aws eks delete-access-entry --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3
+
 aws iam delete-login-profile --user-name gravacao-fase3
 aws iam detach-user-policy --user-name gravacao-fase3 \
   --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
