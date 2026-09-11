@@ -111,6 +111,20 @@ aws iam put-user-policy --user-name gravacao-fase3 --policy-name nega-tfstate \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"s3:*","Resource":["arn:aws:s3:::tc-fase3-tfstate-538880133939","arn:aws:s3:::tc-fase3-tfstate-538880133939/*"]}]}'
 ```
 
+```bash
+# 4. Visibilidade dentro do cluster (lista de nodes e pods no console do EKS).
+#    O ReadOnlyAccess cobre só a API da AWS; nodes e pods vêm da API do Kubernetes,
+#    que exige uma access entry. Use AmazonEKSAdminViewPolicy (leitura do cluster
+#    inteiro) — a AmazonEKSViewPolicy NÃO serve: cobre só recursos de namespace e
+#    falha com "nodes is forbidden" na aba Compute.
+aws eks create-access-entry --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 --type STANDARD
+aws eks associate-access-policy --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3 \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy \
+  --access-scope type=cluster
+```
+
 Login: **https://538880133939.signin.aws.amazon.com/console** · usuário `gravacao-fase3`.
 Entrega a senha por canal privado, nunca pelo grupo. Como o acesso é descartado logo após
 o uso, não há troca de senha no primeiro acesso — apague o usuário assim que terminar.
@@ -118,6 +132,10 @@ o uso, não há troca de senha no primeiro acesso — apague o usuário assim qu
 ### Remover quando não precisar mais
 
 ```bash
+# Primeiro a access entry (se o cluster ainda existir — o destroy também a remove)
+aws eks delete-access-entry --cluster-name oficina-mecanica \
+  --principal-arn arn:aws:iam::538880133939:user/gravacao-fase3
+
 aws iam delete-login-profile --user-name gravacao-fase3
 aws iam detach-user-policy --user-name gravacao-fase3 \
   --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
@@ -135,7 +153,7 @@ aberta esquecida. Confirme com `aws iam list-users`.
 | Sintoma | Causa e solução |
 | --- | --- |
 | `Error acquiring the state lock` | Execução anterior cancelada. Apague o lock: `aws s3 rm s3://tc-fase3-tfstate-538880133939/infra-kubernetes/terraform.tfstate.tflock` |
-| Destroy da VPC trava com `DependencyViolation` | ALB ou security groups `k8s-*` órfãos. O workflow de destroy já limpa antes; se persistir, apague-os pelo console e rode de novo. |
+| Destroy do `tc-infra-kubernetes` passa de 20 min preso em `Still destroying... aws_vpc` | Sobrou o security group `k8s-traffic-*` do Load Balancer Controller. O step de limpeza roda antes do destroy e não consegue apagá-lo enquanto o SG dos nós o referencia. Apague à mão — o Terraform, que fica tentando, conclui sozinho em seguida: `aws ec2 delete-security-group --group-id $(aws ec2 describe-security-groups --filters Name=group-name,Values='k8s-traffic-*' --query 'SecurityGroups[0].GroupId' --output text)` |
 | `You must be logged in to the server` no kubectl | Seu usuário IAM não está em `cluster_admin_principal_arns` (`eks.tf`). Adicione e rode o apply. |
 | Job parado em "Review deployments" | Comportamento esperado: aguarda aprovação do dono da conta. |
 | Pods sem telemetria no Grafana | A aplicação precisa subir **depois** do Alloy, para ler o endpoint OTLP do ConfigMap. Rode o CD novamente. |
